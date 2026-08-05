@@ -29,7 +29,7 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
   if (images.length === 0) return null
 
   return (
-    <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-neutral-800">
+    <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-neutral-800">
       <AnimatePresence mode="wait">
         <motion.img
           key={images[index].src}
@@ -39,7 +39,7 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover object-top"
         />
       </AnimatePresence>
 

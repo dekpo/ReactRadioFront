@@ -1,4 +1,10 @@
-import { SiApplemusic, SiInstagram, SiShazam, SiSpotify } from 'react-icons/si'
+import {
+  SiApplemusic,
+  SiInstagram,
+  SiShazam,
+  SiSpotify,
+  SiYoutube,
+} from 'react-icons/si'
 import { ImageCarousel } from './ImageCarousel'
 
 const LINKS = [
@@ -6,6 +12,11 @@ const LINKS = [
     label: 'Instagram',
     href: 'https://www.instagram.com/yologaza_akayolo/',
     Icon: SiInstagram,
+  },
+  {
+    label: 'YouTube',
+    href: 'https://www.youtube.com/@YOLOGAZAOfficiel',
+    Icon: SiYoutube,
   },
   {
     label: 'Spotify',
@@ -37,7 +48,7 @@ export function HomePage() {
         <p className="mt-1 text-sm text-neutral-400">Propulsé par La Familia</p>
       </section>
 
-      <section className="flex gap-3">
+      <section className="flex flex-wrap gap-3">
         {LINKS.map(({ label, href, Icon }) => (
           <a
             key={label}
