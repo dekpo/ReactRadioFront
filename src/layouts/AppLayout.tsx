@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from '../components/navigation/Sidebar'
 import { BottomNav } from '../components/navigation/BottomNav'
 import { BottomPlayer } from '../features/player/BottomPlayer'
+import { NowPlayingOverlay } from '../features/player/NowPlayingOverlay'
 
 export function AppLayout() {
   return (
@@ -16,6 +17,7 @@ export function AppLayout() {
         <BottomPlayer />
         <BottomNav />
       </div>
+      <NowPlayingOverlay />
     </div>
   )
 }

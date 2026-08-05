@@ -1,18 +1,14 @@
 import { useEffect, useRef } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react'
-import { fetchLiveInfo, STREAM_URL } from '../../lib/api'
+import { STREAM_URL } from '../../lib/api'
 import { usePlayerStore } from './playerStore'
+import { useLiveInfo } from './useLiveInfo'
 
 export function BottomPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const { isPlaying, volume, togglePlay, setVolume } = usePlayerStore()
+  const { isPlaying, volume, togglePlay, setVolume, expand } = usePlayerStore()
 
-  const { data } = useQuery({
-    queryKey: ['live-info'],
-    queryFn: fetchLiveInfo,
-    refetchInterval: 4000,
-  })
+  const { data } = useLiveInfo()
 
   useEffect(() => {
     const audio = audioRef.current
@@ -30,14 +26,19 @@ export function BottomPlayer() {
 
   const track = data?.current
   const title = track?.metadata?.track_title ?? track?.name ?? 'Radio Yologaza'
-  const artist = track?.metadata?.artist_name ?? 'En direct'
+  const artist = track?.metadata?.artist_name ?? 'Live'
   const artwork = track?.metadata?.artwork_url
 
   return (
     <div className="flex items-center justify-between gap-4 border-t border-neutral-800 bg-neutral-950 px-4 py-3">
       <audio ref={audioRef} src={STREAM_URL} preload="none" />
 
-      <div className="flex min-w-0 items-center gap-3">
+      <button
+        type="button"
+        onClick={expand}
+        aria-label="Open now playing"
+        className="flex min-w-0 flex-1 items-center gap-3 text-left sm:flex-none"
+      >
         {artwork ? (
           <img
             src={artwork}
@@ -51,30 +52,30 @@ export function BottomPlayer() {
           <p className="truncate text-sm font-medium">{title}</p>
           <p className="truncate text-xs text-neutral-400">{artist}</p>
         </div>
-      </div>
+      </button>
 
       <div className="flex items-center gap-4">
         <button
           type="button"
           disabled
-          className="cursor-not-allowed text-neutral-600"
-          aria-label="Précédent (indisponible en direct)"
+          className="hidden cursor-not-allowed text-neutral-600 sm:block"
+          aria-label="Previous (unavailable on a live stream)"
         >
           <SkipBack size={18} />
         </button>
         <button
           type="button"
           onClick={togglePlay}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
-          aria-label={isPlaying ? 'Pause' : 'Lecture'}
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
+          aria-label={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? <Pause size={18} /> : <Play size={18} />}
         </button>
         <button
           type="button"
           disabled
-          className="cursor-not-allowed text-neutral-600"
-          aria-label="Suivant (indisponible en direct)"
+          className="hidden cursor-not-allowed text-neutral-600 sm:block"
+          aria-label="Next (unavailable on a live stream)"
         >
           <SkipForward size={18} />
         </button>
