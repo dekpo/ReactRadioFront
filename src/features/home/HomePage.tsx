@@ -1,8 +1,17 @@
 const LINKS = [
-  { label: 'Instagram', href: 'https://www.instagram.com/yologaza' },
-  { label: 'Spotify', href: 'https://open.spotify.com/artist/' },
-  { label: 'Apple Music', href: 'https://music.apple.com/' },
-  { label: 'Shazam', href: 'https://www.shazam.com/' },
+  { label: 'Instagram', href: 'https://www.instagram.com/yologaza_akayolo/' },
+  {
+    label: 'Spotify',
+    href: 'https://open.spotify.com/intl-fr/artist/4tDRUg2AUL25TKOy9NphEe',
+  },
+  {
+    label: 'Apple Music',
+    href: 'https://music.apple.com/fr/artist/yologaza/1494924462',
+  },
+  {
+    label: 'Shazam',
+    href: 'https://www.shazam.com/artist/yologaza/1494924462',
+  },
 ]
 
 export function HomePage() {
@@ -28,12 +37,28 @@ export function HomePage() {
       </section>
 
       <section className="space-y-4 rounded-xl bg-neutral-800/50 p-6">
-        <h2 className="text-xl font-semibold">Biographie</h2>
-        <p className="text-sm leading-relaxed text-neutral-300">
-          {/* TODO : reprendre la biographie complète de YOLOGAZA, voir
-          AI-Context/journal/2026-08-04.md */}
-          Contenu à reprendre depuis l'ancienne page d'accueil.
-        </p>
+        <h2 className="text-xl font-semibold">Biography</h2>
+        <div className="space-y-3 text-sm leading-relaxed text-neutral-300">
+          <p>
+            YOLOGAZA is a rapper/singer, songwriter and composer from Annecy,
+            in the Auvergne-Rhône-Alpes region of France.
+          </p>
+          <p>
+            Influenced by his father, a former member of a rap collective in
+            the 90s, he became passionate about rap and songwriting from the
+            age of 13.
+          </p>
+          <p>
+            In his tracks, the Annecy-based artist tackles various subjects,
+            sharing his doubts, fears, failures, but also his determination,
+            faith and victories.
+          </p>
+          <p>
+            With creative and highly distinct tracks, YOLOGAZA offers a full
+            palette of emotions conveyed through bold instrumentals that bring
+            color and, above all, innovation to the world of Hip Hop.
+          </p>
+        </div>
       </section>
     </div>
   )

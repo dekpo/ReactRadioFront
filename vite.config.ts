@@ -7,9 +7,24 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api': 'https://radio.yologaza.com',
-      '/stream.mp3': 'https://radio.yologaza.com',
-      '/feeds': 'https://radio.yologaza.com',
+      '/api': {
+        target: 'https://radio.yologaza.com',
+        changeOrigin: true,
+        // Dev-only: the VPS cert chain isn't trusted by Node's default CA
+        // store from this machine. Safe to relax here since this proxy is
+        // never used in production (see README).
+        secure: false,
+      },
+      '/stream.mp3': {
+        target: 'https://radio.yologaza.com',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/feeds': {
+        target: 'https://radio.yologaza.com',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })
