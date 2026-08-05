@@ -1,10 +1,18 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, Pause, Play, SkipBack, SkipForward } from 'lucide-react'
+import {
+  ChevronDown,
+  Loader2,
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+} from 'lucide-react'
 import { useLiveInfo } from './useLiveInfo'
 import { usePlayerStore } from './playerStore'
 
 export function NowPlayingOverlay() {
-  const { isExpanded, isPlaying, togglePlay, collapse } = usePlayerStore()
+  const { isExpanded, isPlaying, isBuffering, togglePlay, collapse } =
+    usePlayerStore()
   const { data } = useLiveInfo()
 
   const track = data?.current
@@ -65,10 +73,17 @@ export function NowPlayingOverlay() {
               <button
                 type="button"
                 onClick={togglePlay}
-                aria-label={isPlaying ? 'Pause' : 'Play'}
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
+                disabled={isBuffering}
+                aria-label={isBuffering ? 'Loading' : isPlaying ? 'Pause' : 'Play'}
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black transition hover:scale-105 disabled:cursor-wait"
               >
-                {isPlaying ? <Pause size={28} /> : <Play size={28} />}
+                {isBuffering ? (
+                  <Loader2 size={28} className="animate-spin" />
+                ) : isPlaying ? (
+                  <Pause size={28} />
+                ) : (
+                  <Play size={28} />
+                )}
               </button>
               <button
                 type="button"

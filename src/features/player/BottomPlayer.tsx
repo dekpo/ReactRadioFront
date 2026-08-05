@@ -1,5 +1,12 @@
 import { useEffect, useRef } from 'react'
-import { Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react'
+import {
+  Loader2,
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+  Volume2,
+} from 'lucide-react'
 import { STREAM_URL } from '../../lib/api'
 import { usePlayerStore } from './playerStore'
 import { useLiveInfo } from './useLiveInfo'
@@ -10,7 +17,8 @@ const FALLBACK_ARTWORK = '/carousel/yologaza-1.jpeg'
 
 export function BottomPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const { isPlaying, volume, togglePlay, setVolume, expand } = usePlayerStore()
+  const { isPlaying, isBuffering, volume, togglePlay, setVolume, expand } =
+    usePlayerStore()
 
   const { data } = useLiveInfo()
 
@@ -18,6 +26,10 @@ export function BottomPlayer() {
     const audio = audioRef.current
     if (!audio) return
     if (isPlaying) {
+      // Show a loading state immediately: on a live stream, connecting +
+      // buffering enough data to play back takes a moment, and the native
+      // `playing` event below is what confirms audio is actually flowing.
+      usePlayerStore.getState().setBuffering(true)
       // A plain `audio.play()` here would resume from whatever was already
       // buffered while paused, not from the actual live position (the
       // underlying connection/buffer isn't closed by `pause()` alone). We
@@ -28,12 +40,36 @@ export function BottomPlayer() {
       audio.play().catch(() => usePlayerStore.getState().setPlaying(false))
     } else {
       audio.pause()
+      usePlayerStore.getState().setBuffering(false)
       // Drop the buffered/connected stream entirely so a later play() can't
       // resume from stale audio.
       audio.removeAttribute('src')
       audio.load()
     }
   }, [isPlaying])
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    // `playing` fires once audio is actually audible again after a delay/
+    // buffering — the reliable signal that the loading spinner should stop.
+    const handlePlaying = () => usePlayerStore.getState().setBuffering(false)
+    // `waiting` fires if playback stalls mid-stream (network hiccup).
+    const handleWaiting = () => usePlayerStore.getState().setBuffering(true)
+    const handleErrorOrPause = () =>
+      usePlayerStore.getState().setBuffering(false)
+
+    audio.addEventListener('playing', handlePlaying)
+    audio.addEventListener('waiting', handleWaiting)
+    audio.addEventListener('error', handleErrorOrPause)
+    audio.addEventListener('pause', handleErrorOrPause)
+    return () => {
+      audio.removeEventListener('playing', handlePlaying)
+      audio.removeEventListener('waiting', handleWaiting)
+      audio.removeEventListener('error', handleErrorOrPause)
+      audio.removeEventListener('pause', handleErrorOrPause)
+    }
+  }, [])
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume
@@ -115,10 +151,17 @@ export function BottomPlayer() {
         <button
           type="button"
           onClick={togglePlay}
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
-          aria-label={isPlaying ? 'Pause' : 'Play'}
+          disabled={isBuffering}
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-black transition hover:scale-105 disabled:cursor-wait"
+          aria-label={isBuffering ? 'Loading' : isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+          {isBuffering ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : isPlaying ? (
+            <Pause size={18} />
+          ) : (
+            <Play size={18} />
+          )}
         </button>
         <button
           type="button"
