@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchWeekInfo, getTodayKey } from '../../lib/api'
+import { fetchWeekInfo, getDayLabelFr, getTodayKey } from '../../lib/api'
 
 export function SchedulePage() {
   const { data, isLoading, isError } = useQuery({
@@ -13,7 +13,7 @@ export function SchedulePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <h1 className="text-2xl font-bold capitalize">
-        Planning du jour ({todayKey})
+        Planning du jour ({getDayLabelFr(todayKey)})
       </h1>
 
       {isLoading && <p className="text-neutral-400">Chargement du planning…</p>}

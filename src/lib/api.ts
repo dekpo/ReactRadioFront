@@ -93,10 +93,26 @@ const DAY_KEYS = [
   'saturday',
 ] as const
 
+/** Libellés français correspondants, pour l'affichage uniquement. */
+const DAY_LABELS_FR: Record<string, string> = {
+  sunday: 'dimanche',
+  monday: 'lundi',
+  tuesday: 'mardi',
+  wednesday: 'mercredi',
+  thursday: 'jeudi',
+  friday: 'vendredi',
+  saturday: 'samedi',
+}
+
 /** Retourne la clé du jour courant (fuseau Europe/Paris) pour filtrer /api/week-info. */
 export function getTodayKey(): string {
   const parisNow = new Date(
     new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }),
   )
   return DAY_KEYS[parisNow.getDay()]
+}
+
+/** Libellé français d'une clé de jour (ex. "monday" -> "lundi"). */
+export function getDayLabelFr(dayKey: string): string {
+  return DAY_LABELS_FR[dayKey] ?? dayKey
 }
