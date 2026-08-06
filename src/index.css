@@ -8,6 +8,10 @@ html,
 body,
 #root {
   height: 100%;
+  /* Prevent the document itself from scrolling on mobile browsers with a
+     dynamic address bar (Chrome iOS in particular): only #root's internal
+     <main> should scroll, via its own overflow-y-auto. */
+  overflow: hidden;
   margin: 0;
   background-color: #121212;
   color: #ffffff;

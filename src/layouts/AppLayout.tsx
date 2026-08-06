@@ -6,7 +6,7 @@ import { NowPlayingOverlay } from '../features/player/NowPlayingOverlay'
 
 export function AppLayout() {
   return (
-    <div className="flex h-screen flex-col bg-black text-white">
+    <div className="flex h-dvh flex-col bg-black text-white">
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-y-auto bg-neutral-900 p-4 pb-40 md:m-2 md:rounded-lg md:pb-24">
