@@ -17,7 +17,8 @@ the existing nginx, see [Deployment](#deployment) below).
 - [x] Routing: `Home`, `Schedule` (today's shows), `Library` (placeholder)
 - [x] `Home` — station intro, social links as icons (Instagram, YouTube,
       Spotify, Apple Music, Shazam), auto-playing/swipeable photo carousel,
-      full artist bio
+      full artist bio, "about the radio" section with an Instagram
+      contact link styled as a pill button
 - [x] `Schedule` — today's show list via `/api/week-info`, day name in French
 - [x] Real audio playback: persistent bottom player + fullscreen "Now Playing"
       overlay (Spotify-style open/close animation), lock screen artwork via

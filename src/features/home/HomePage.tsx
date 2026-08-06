@@ -90,6 +90,25 @@ export function HomePage() {
           </p>
         </div>
       </section>
+
+      <section className="space-y-3 rounded-xl bg-neutral-800/50 p-6">
+        <h2 className="text-xl font-semibold">À propos de la radio</h2>
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-relaxed text-neutral-300">
+          <span>
+            Vous voulez des infos sur cette radio et/ou être diffusé…
+            contactez l'artiste YOLOGAZA sur
+          </span>
+          <a
+            href="https://www.instagram.com/yologaza_akayolo/"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-black transition hover:bg-neutral-200"
+          >
+            <SiInstagram /> Instagram
+          </a>
+          <span>!</span>
+        </p>
+      </section>
     </div>
   )
 }
