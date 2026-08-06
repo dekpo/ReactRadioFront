@@ -50,19 +50,36 @@ async function getJson<T>(path: string): Promise<T> {
   return res.json() as Promise<T>
 }
 
-// LibreTime's legacy API HTML-escapes ampersands in artwork_url (e.g.
-// "...&amp;return=artwork"), which breaks the URL as-is.
-function unescapeAmpersand(url: string): string {
-  return url.replace(/&amp;/g, '&')
+// LibreTime's legacy API returns HTML-escaped text in several string fields
+// (track/show/artist names, artwork_url's "&amp;"...) — e.g. an apostrophe
+// comes back as "&#039;" instead of "'". Since all user-facing content on
+// this site is French (accents, cedillas, apostrophes are everywhere), any
+// unescaped field would render garbled. `textarea.innerHTML` is a reliable
+// browser-native way to decode *any* HTML entity (named or numeric) without
+// pulling in a dependency; the element is never attached to the DOM.
+function decodeHtmlEntities(text: string): string {
+  if (typeof document === 'undefined') return text
+  const el = document.createElement('textarea')
+  el.innerHTML = text
+  return el.value
+}
+
+function normalizeShow(show: LiveShow): LiveShow {
+  return { ...show, name: decodeHtmlEntities(show.name) }
 }
 
 function normalizeTrack<T extends LiveTrack | undefined | null>(track: T): T {
-  if (!track?.metadata?.artwork_url) return track
+  if (!track) return track
   return {
     ...track,
+    name: decodeHtmlEntities(track.name),
     metadata: {
       ...track.metadata,
-      artwork_url: unescapeAmpersand(track.metadata.artwork_url),
+      track_title: decodeHtmlEntities(track.metadata.track_title),
+      artist_name: decodeHtmlEntities(track.metadata.artist_name),
+      artwork_url: track.metadata.artwork_url
+        ? decodeHtmlEntities(track.metadata.artwork_url)
+        : track.metadata.artwork_url,
     },
   }
 }
@@ -73,11 +90,22 @@ export async function fetchLiveInfo() {
     ...data,
     current: normalizeTrack(data.current),
     next: normalizeTrack(data.next),
+    currentShow: (data.currentShow ?? []).map(normalizeShow),
+    nextShow: (data.nextShow ?? []).map(normalizeShow),
   }
 }
 
-export function fetchWeekInfo() {
-  return getJson<WeekInfo>('/api/week-info')
+export async function fetchWeekInfo() {
+  const data = await getJson<WeekInfo>('/api/week-info')
+  const normalized: WeekInfo = {}
+  for (const [day, items] of Object.entries(data)) {
+    // The endpoint also returns a stray `AIRTIME_API_VERSION` string key
+    // alongside the day arrays — skip anything that isn't actually a list.
+    normalized[day] = Array.isArray(items)
+      ? items.map((item) => ({ ...item, name: decodeHtmlEntities(item.name) }))
+      : items
+  }
+  return normalized
 }
 
 export const STREAM_URL = '/stream.mp3'

@@ -25,6 +25,9 @@ the existing nginx, see [Deployment](#deployment) below).
 - [x] Network resilience: automatic stream reconnection with backoff on
       connection loss, explicit offline/error banners (important for a live
       audio stream used on mobile/roaming)
+- [x] Robust French text rendering: all dynamic text from the LibreTime API
+      (track/artist/show names) is HTML-entity-decoded, so accents, cedillas
+      and apostrophes always display correctly
 - [x] Deployed to production (see below)
 - [ ] `Library` — disabled placeholder ("coming soon"), pending backend/auth
 - [ ] User accounts, liked tracks / playlists (Phase 2, needs a dedicated
@@ -94,6 +97,11 @@ endpoints directly:
 
 A dedicated backend (e.g. FastAPI) is planned for a later phase, to support user
 accounts and a "liked tracks" library — see the roadmap referenced above.
+
+LibreTime's legacy API returns some text fields HTML-escaped (e.g. an
+apostrophe comes back as `&#039;`). Since all site content is French (accents,
+cedillas, apostrophes are common), `src/lib/api.ts` decodes every dynamic text
+field (track title, artist, show names) before it reaches the UI.
 
 ## Network resilience
 
