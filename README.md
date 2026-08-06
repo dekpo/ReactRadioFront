@@ -21,8 +21,9 @@ the existing nginx, see [Deployment](#deployment) below).
 - [x] `Schedule` — today's show list via `/api/week-info`, day name in French
 - [x] Real audio playback: persistent bottom player + fullscreen "Now Playing"
       overlay (Spotify-style open/close animation), lock screen artwork via
-      the Media Session API (re-applied on every stream reconnect, since
-      iOS/WebKit clears it whenever the `<audio>` element reloads)
+      the Media Session API (re-applied on every stream reconnect; live-info
+      polling kept alive in the background via `refetchIntervalInBackground`
+      so track changes still reach the lock screen while the phone is locked)
 - [x] Network resilience: automatic stream reconnection with backoff on
       connection loss, explicit offline/error banners (important for a live
       audio stream used on mobile/roaming)

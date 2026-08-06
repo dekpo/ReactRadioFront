@@ -214,6 +214,21 @@ export function BottomPlayer() {
         type: 'image/jpeg',
       })),
     })
+
+    // On a *live* stream there's never a natural "track changed" signal for
+    // the OS to react to (same continuous connection, only the API metadata
+    // changes) — iOS/WebKit is known to silently ignore mid-playback
+    // metadata updates in that case (see e.g. icecast-metadata-js#193).
+    // Briefly nudging playbackState forces it to re-read the now-playing
+    // info instead of leaving the lock screen stuck on the previous track.
+    if (usePlayerStore.getState().isPlaying) {
+      navigator.mediaSession.playbackState = 'none'
+      // Split across two ticks: setting both states synchronously in the
+      // same task is sometimes coalesced by the OS into a no-op.
+      setTimeout(() => {
+        navigator.mediaSession.playbackState = 'playing'
+      }, 0)
+    }
   }
 
   useEffect(() => {
