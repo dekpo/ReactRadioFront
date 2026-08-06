@@ -115,6 +115,12 @@ export function BottomPlayer() {
       retryCountRef.current = 0
       clearReconnectTimers()
       usePlayerStore.getState().setBuffering(false)
+      // iOS/WebKit resets its internal media session state whenever the
+      // underlying `<audio>` reloads (every reconnect uses a fresh
+      // cache-busted `src` + `load()`), wiping our previously-set metadata.
+      // Re-applying it right when playback actually resumes is what keeps
+      // the lock screen title/artist/artwork in sync on iOS.
+      applyMediaSessionMetadata()
     }
     // `waiting` fires if playback stalls (network hiccup). Give it
     // STALLED_TIMEOUT_MS to resolve on its own before forcing a reconnect.
@@ -181,24 +187,38 @@ export function BottomPlayer() {
   const artist = track?.metadata?.artist_name ?? 'Live'
   const artwork = track?.metadata?.artwork_url
 
+  // Kept in a ref so `applyMediaSessionMetadata` (called from the audio event
+  // handlers below, outside React's render cycle) always reads the latest
+  // track info without needing to be redeclared on every change.
+  const mediaInfoRef = useRef({ title, artist, artwork })
+  useEffect(() => {
+    mediaInfoRef.current = { title, artist, artwork }
+  }, [title, artist, artwork])
+
   // Lock screen / OS media controls (Android/iOS/desktop): without this, the
   // browser falls back to the page favicon, which is tiny and pixelated once
   // upscaled on a lock screen. We push the current track's real artwork
-  // instead, refreshed every time it changes.
-  useEffect(() => {
+  // instead. Several artwork sizes are provided since some UAs (notably iOS
+  // WebKit) pick the closest declared size rather than scaling a single one.
+  function applyMediaSessionMetadata() {
     if (!('mediaSession' in navigator)) return
+    const { title, artist, artwork } = mediaInfoRef.current
+    const artworkSrc = artwork ?? FALLBACK_ARTWORK
     navigator.mediaSession.metadata = new MediaMetadata({
       title,
       artist,
       album: 'Radio Yologaza',
-      artwork: [
-        {
-          src: artwork ?? FALLBACK_ARTWORK,
-          sizes: '512x512',
-          type: 'image/jpeg',
-        },
-      ],
+      artwork: [96, 128, 192, 256, 384, 512].map((size) => ({
+        src: artworkSrc,
+        sizes: `${size}x${size}`,
+        type: 'image/jpeg',
+      })),
     })
+  }
+
+  useEffect(() => {
+    applyMediaSessionMetadata()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, artist, artwork])
 
   useEffect(() => {
