@@ -48,7 +48,7 @@ export function NowPlayingOverlay() {
             </button>
           </div>
 
-          <div className="relative flex flex-1 flex-col items-center justify-center gap-8 px-8 pb-24">
+          <div className="relative flex flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-8 py-4">
             <div className="flex h-64 w-64 items-center justify-center overflow-hidden rounded-2xl bg-neutral-800 shadow-2xl sm:h-80 sm:w-80">
               {artwork ? (
                 <img src={artwork} alt="" className="h-full w-full object-cover" />
@@ -99,8 +99,14 @@ export function NowPlayingOverlay() {
             <span className="flex items-center gap-1.5 text-xs font-semibold text-red-500">
               <span className="h-2 w-2 rounded-full bg-red-500" /> LIVE
             </span>
+          </div>
 
-            <div className="w-full max-w-sm overflow-hidden rounded-lg">
+          {/* Anchored to the bottom of the screen (outside the centered
+              content above) so it's never clipped when the centered stack
+              is taller than the viewport — see the mobile "Pas de connexion"
+              truncation bug reported by the user. */}
+          <div className="relative w-full shrink-0 px-4 pb-6">
+            <div className="mx-auto w-full max-w-sm overflow-hidden rounded-lg">
               <ConnectionBanner />
             </div>
           </div>
