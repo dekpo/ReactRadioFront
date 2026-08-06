@@ -15,30 +15,87 @@ import { useLiveInfo } from './useLiveInfo'
 // artwork (rare, but LibreTime sometimes lacks it for some files).
 const FALLBACK_ARTWORK = '/carousel/yologaza-1.jpeg'
 
+// Auto-reconnect tuning for flaky mobile connections (roaming, tunnels...).
+const MAX_RECONNECT_ATTEMPTS = 5
+const BASE_RECONNECT_DELAY_MS = 2000
+const MAX_RECONNECT_DELAY_MS = 16000
+// How long we tolerate a stalled `waiting` state before treating it as a
+// dead connection and forcing a reconnect, rather than buffering forever.
+const STALLED_TIMEOUT_MS = 10000
+
 export function BottomPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const retryCountRef = useRef(0)
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const stalledTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const { isPlaying, isBuffering, volume, togglePlay, setVolume, expand } =
     usePlayerStore()
 
   const { data } = useLiveInfo()
 
+  function clearReconnectTimers() {
+    if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current)
+    if (stalledTimeoutRef.current) clearTimeout(stalledTimeoutRef.current)
+    retryTimeoutRef.current = null
+    stalledTimeoutRef.current = null
+  }
+
+  // Connects (or reconnects) to the live edge of the stream. A plain
+  // `audio.play()` after a pause would resume from whatever was already
+  // buffered, not the actual live position — the underlying connection/
+  // buffer isn't closed by `pause()` alone. Reassigning `src` with a
+  // cache-busting query param forces a brand new connection.
+  function connectAndPlay() {
+    const audio = audioRef.current
+    if (!audio) return
+    usePlayerStore.getState().setBuffering(true)
+    audio.src = `${STREAM_URL}?_=${Date.now()}`
+    audio.load()
+    audio.play().catch(scheduleReconnect)
+  }
+
+  // Called on stream `error`, on a stalled `waiting` that lasted too long,
+  // or on a failed `play()` — decides whether to retry, wait for the network
+  // to come back, or give up and let the user retry manually.
+  function scheduleReconnect() {
+    const store = usePlayerStore.getState()
+    if (!store.isPlaying) return // user intentionally stopped, ignore
+    clearReconnectTimers()
+
+    if (store.isOffline) {
+      // No point burning retries while genuinely offline; the `online`
+      // listener below reconnects immediately once the network is back.
+      store.setBuffering(false)
+      return
+    }
+
+    if (retryCountRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      retryCountRef.current = 0
+      store.setBuffering(false)
+      store.setStreamError(true)
+      store.setPlaying(false)
+      return
+    }
+
+    const delay = Math.min(
+      BASE_RECONNECT_DELAY_MS * 2 ** retryCountRef.current,
+      MAX_RECONNECT_DELAY_MS,
+    )
+    retryCountRef.current += 1
+    store.setBuffering(true)
+    retryTimeoutRef.current = setTimeout(connectAndPlay, delay)
+  }
+
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
     if (isPlaying) {
-      // Show a loading state immediately: on a live stream, connecting +
-      // buffering enough data to play back takes a moment, and the native
-      // `playing` event below is what confirms audio is actually flowing.
-      usePlayerStore.getState().setBuffering(true)
-      // A plain `audio.play()` here would resume from whatever was already
-      // buffered while paused, not from the actual live position (the
-      // underlying connection/buffer isn't closed by `pause()` alone). We
-      // force a brand new connection to the live edge of the stream by
-      // reassigning `src` with a cache-busting query param before playing.
-      audio.src = `${STREAM_URL}?_=${Date.now()}`
-      audio.load()
-      audio.play().catch(() => usePlayerStore.getState().setPlaying(false))
+      retryCountRef.current = 0
+      usePlayerStore.getState().setStreamError(false)
+      connectAndPlay()
     } else {
+      clearReconnectTimers()
       audio.pause()
       usePlayerStore.getState().setBuffering(false)
       // Drop the buffered/connected stream entirely so a later play() can't
@@ -46,29 +103,73 @@ export function BottomPlayer() {
       audio.removeAttribute('src')
       audio.load()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying])
 
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
     // `playing` fires once audio is actually audible again after a delay/
-    // buffering — the reliable signal that the loading spinner should stop.
-    const handlePlaying = () => usePlayerStore.getState().setBuffering(false)
-    // `waiting` fires if playback stalls mid-stream (network hiccup).
-    const handleWaiting = () => usePlayerStore.getState().setBuffering(true)
-    const handleErrorOrPause = () =>
+    // buffering — the reliable signal that a (re)connection succeeded.
+    const handlePlaying = () => {
+      retryCountRef.current = 0
+      clearReconnectTimers()
       usePlayerStore.getState().setBuffering(false)
+    }
+    // `waiting` fires if playback stalls (network hiccup). Give it
+    // STALLED_TIMEOUT_MS to resolve on its own before forcing a reconnect.
+    const handleWaiting = () => {
+      usePlayerStore.getState().setBuffering(true)
+      if (stalledTimeoutRef.current) clearTimeout(stalledTimeoutRef.current)
+      stalledTimeoutRef.current = setTimeout(scheduleReconnect, STALLED_TIMEOUT_MS)
+    }
+    const handleError = () => scheduleReconnect()
+    // Only clear the buffering flag here for an *intentional* stop — the
+    // reconnect logic above never calls audio.pause() directly.
+    const handlePause = () => {
+      if (!usePlayerStore.getState().isPlaying) {
+        usePlayerStore.getState().setBuffering(false)
+      }
+    }
 
     audio.addEventListener('playing', handlePlaying)
     audio.addEventListener('waiting', handleWaiting)
-    audio.addEventListener('error', handleErrorOrPause)
-    audio.addEventListener('pause', handleErrorOrPause)
+    audio.addEventListener('error', handleError)
+    audio.addEventListener('pause', handlePause)
     return () => {
       audio.removeEventListener('playing', handlePlaying)
       audio.removeEventListener('waiting', handleWaiting)
-      audio.removeEventListener('error', handleErrorOrPause)
-      audio.removeEventListener('pause', handleErrorOrPause)
+      audio.removeEventListener('error', handleError)
+      audio.removeEventListener('pause', handlePause)
+      clearReconnectTimers()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const store = usePlayerStore.getState()
+    store.setOffline(!navigator.onLine)
+
+    function handleOnline() {
+      usePlayerStore.getState().setOffline(false)
+      // Jump straight back to a fresh connection attempt instead of waiting
+      // for a stale retry timer — the whole point of roaming resilience.
+      if (usePlayerStore.getState().isPlaying) {
+        retryCountRef.current = 0
+        connectAndPlay()
+      }
+    }
+    function handleOffline() {
+      usePlayerStore.getState().setOffline(true)
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

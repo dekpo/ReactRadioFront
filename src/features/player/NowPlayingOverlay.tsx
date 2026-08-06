@@ -7,6 +7,7 @@ import {
   SkipBack,
   SkipForward,
 } from 'lucide-react'
+import { ConnectionBanner } from './ConnectionBanner'
 import { useLiveInfo } from './useLiveInfo'
 import { usePlayerStore } from './playerStore'
 
@@ -98,6 +99,10 @@ export function NowPlayingOverlay() {
             <span className="flex items-center gap-1.5 text-xs font-semibold text-red-500">
               <span className="h-2 w-2 rounded-full bg-red-500" /> LIVE
             </span>
+
+            <div className="w-full max-w-sm overflow-hidden rounded-lg">
+              <ConnectionBanner />
+            </div>
           </div>
         </motion.div>
       )}

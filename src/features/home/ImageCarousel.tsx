@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const AUTOPLAY_INTERVAL_MS = 5000
+// Minimum horizontal drag (px) or flick speed (px/s) to count as a swipe,
+// rather than an accidental touch.
+const SWIPE_DISTANCE_THRESHOLD = 50
+const SWIPE_VELOCITY_THRESHOLD = 400
 
 interface ImageCarouselProps {
   images: { src: string; alt: string }[]
@@ -26,10 +30,24 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
     setIndex((next + images.length) % images.length)
   }
 
+  function handleDragEnd(_event: unknown, info: PanInfo) {
+    if (
+      info.offset.x <= -SWIPE_DISTANCE_THRESHOLD ||
+      info.velocity.x <= -SWIPE_VELOCITY_THRESHOLD
+    ) {
+      goTo(index + 1)
+    } else if (
+      info.offset.x >= SWIPE_DISTANCE_THRESHOLD ||
+      info.velocity.x >= SWIPE_VELOCITY_THRESHOLD
+    ) {
+      goTo(index - 1)
+    }
+  }
+
   if (images.length === 0) return null
 
   return (
-    <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-neutral-800">
+    <div className="relative aspect-square w-full touch-pan-y overflow-hidden rounded-xl bg-neutral-800">
       <AnimatePresence mode="wait">
         <motion.img
           key={images[index].src}
@@ -39,7 +57,11 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
-          className="absolute inset-0 h-full w-full object-cover object-top"
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.2}
+          onDragEnd={handleDragEnd}
+          className="absolute inset-0 h-full w-full cursor-grab object-cover object-top active:cursor-grabbing"
         />
       </AnimatePresence>
 

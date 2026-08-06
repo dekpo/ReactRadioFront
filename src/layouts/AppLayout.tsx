@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from '../components/navigation/Sidebar'
 import { BottomNav } from '../components/navigation/BottomNav'
 import { BottomPlayer } from '../features/player/BottomPlayer'
+import { ConnectionBanner } from '../features/player/ConnectionBanner'
 import { NowPlayingOverlay } from '../features/player/NowPlayingOverlay'
 
 export function AppLayout() {
@@ -14,6 +15,7 @@ export function AppLayout() {
         </main>
       </div>
       <div className="fixed bottom-0 left-0 right-0 z-10">
+        <ConnectionBanner />
         <BottomPlayer />
         <BottomNav />
       </div>
