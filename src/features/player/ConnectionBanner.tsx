@@ -7,26 +7,32 @@ export function ConnectionBanner() {
 
   if (isOffline) {
     return (
-      <div className="flex items-center justify-center gap-2 bg-neutral-800 px-4 py-2 text-center text-xs text-neutral-300">
-        <WifiOff size={14} className="flex-shrink-0" />
-        Pas de connexion internet — reprise automatique dès que le réseau
-        revient.
+      <div className="flex flex-col items-center gap-2 bg-neutral-800 px-6 py-6 text-center">
+        <WifiOff size={36} className="text-neutral-300" />
+        <p className="text-lg font-semibold text-white">
+          Pas de connexion internet
+        </p>
+        <p className="text-sm text-neutral-300">
+          Reprise automatique dès que le réseau revient.
+        </p>
       </div>
     )
   }
 
   if (streamError) {
     return (
-      <div className="flex items-center justify-center gap-3 bg-red-900/80 px-4 py-2 text-center text-xs text-white">
-        <AlertTriangle size={14} className="flex-shrink-0" />
-        Impossible de se connecter au flux.
+      <div className="flex flex-col items-center gap-2 bg-red-900/90 px-6 py-6 text-center">
+        <AlertTriangle size={36} className="text-white" />
+        <p className="text-lg font-semibold text-white">
+          Impossible de se connecter au flux
+        </p>
         <button
           type="button"
           onClick={() => {
             setStreamError(false)
             setPlaying(true)
           }}
-          className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-black transition hover:bg-neutral-200"
+          className="mt-1 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-black transition hover:bg-neutral-200"
         >
           Réessayer
         </button>

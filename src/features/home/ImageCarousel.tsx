@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-react'
 
 const AUTOPLAY_INTERVAL_MS = 5000
 // Minimum horizontal drag (px) or flick speed (px/s) to count as a swipe,
@@ -16,6 +16,13 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
   const [index, setIndex] = useState(0)
   // Manual navigation (arrows) stops the autoplay for good.
   const [autoplay, setAutoplay] = useState(true)
+  // Tracks whether the current image failed to load (e.g. offline) so we can
+  // show a tidy placeholder instead of the browser's broken-image icon.
+  const [hasError, setHasError] = useState(false)
+
+  useEffect(() => {
+    setHasError(false)
+  }, [index])
 
   useEffect(() => {
     if (!autoplay || images.length <= 1) return
@@ -49,20 +56,39 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
   return (
     <div className="relative aspect-square w-full touch-pan-y overflow-hidden rounded-xl bg-neutral-800">
       <AnimatePresence mode="wait">
-        <motion.img
-          key={images[index].src}
-          src={images[index].src}
-          alt={images[index].alt}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
-          onDragEnd={handleDragEnd}
-          className="absolute inset-0 h-full w-full cursor-grab object-cover object-top active:cursor-grabbing"
-        />
+        {hasError ? (
+          <motion.div
+            key={`${images[index].src}-fallback`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
+            onDragEnd={handleDragEnd}
+            className="absolute inset-0 flex cursor-grab flex-col items-center justify-center gap-2 bg-neutral-800 text-neutral-500 active:cursor-grabbing"
+          >
+            <ImageOff size={40} />
+            <p className="text-xs">Photo indisponible</p>
+          </motion.div>
+        ) : (
+          <motion.img
+            key={images[index].src}
+            src={images[index].src}
+            alt={images[index].alt}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
+            onDragEnd={handleDragEnd}
+            onError={() => setHasError(true)}
+            className="absolute inset-0 h-full w-full cursor-grab object-cover object-top active:cursor-grabbing"
+          />
+        )}
       </AnimatePresence>
 
       <button
