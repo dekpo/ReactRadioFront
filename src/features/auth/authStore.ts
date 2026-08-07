@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { backendApi, type BackendUser } from '../../lib/backendApi'
+import { useLikesStore } from '../likes/likesStore'
 
 interface AuthState {
   user: BackendUser | null
@@ -40,9 +41,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     await backendApi.logout()
     set({ user: null })
+    useLikesStore.getState().reset()
   },
   deleteAccount: async () => {
     await backendApi.deleteAccount()
     set({ user: null })
+    useLikesStore.getState().reset()
   },
 }))

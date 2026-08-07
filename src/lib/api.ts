@@ -11,8 +11,19 @@ export interface LiveTrack {
     track_title: string
     artist_name: string
     artwork_url: string
+    // LibreTime's cc_files.id — stable identifier used as the "likes"
+    // foreign key. track_type_id: 1=TRACKS, 2=JINGLES, 3=INTERLUDES,
+    // 4=INSTRU (see AI-Context/handoff-phase2-accounts-likes). Both are
+    // already present in the real API response but weren't typed until
+    // Phase 2 needed them.
+    id?: number
+    track_type_id?: number
   }
 }
+
+// Real tracks and instrumentals are likeable; jingles/interludes are not.
+// Decided 2026-08-06, see feasibility-checklist.md §2.
+export const LIKEABLE_TRACK_TYPE_IDS = [1, 4]
 
 export interface LiveShow {
   name: string

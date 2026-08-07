@@ -8,6 +8,7 @@ import {
   Volume2,
 } from 'lucide-react'
 import { STREAM_URL } from '../../lib/api'
+import { LikeButton } from '../likes/LikeButton'
 import { usePlayerStore } from './playerStore'
 import { useLiveInfo } from './useLiveInfo'
 
@@ -274,6 +275,8 @@ export function BottomPlayer() {
           <p className="truncate text-xs text-neutral-400">{artist}</p>
         </div>
       </button>
+
+      <LikeButton track={track} size={18} className="flex-shrink-0" />
 
       <div className="flex items-center gap-4">
         <button

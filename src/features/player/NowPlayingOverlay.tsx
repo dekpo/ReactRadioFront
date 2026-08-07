@@ -8,6 +8,7 @@ import {
   SkipForward,
 } from 'lucide-react'
 import { ConnectionBanner } from './ConnectionBanner'
+import { LikeButton } from '../likes/LikeButton'
 import { useLiveInfo } from './useLiveInfo'
 import { usePlayerStore } from './playerStore'
 
@@ -57,9 +58,12 @@ export function NowPlayingOverlay() {
               )}
             </div>
 
-            <div className="max-w-sm text-center">
-              <p className="truncate text-2xl font-bold">{title}</p>
-              <p className="mt-1 truncate text-neutral-300">{artist}</p>
+            <div className="flex w-full max-w-sm items-center justify-center gap-3">
+              <div className="min-w-0 flex-1 text-center">
+                <p className="truncate text-2xl font-bold">{title}</p>
+                <p className="mt-1 truncate text-neutral-300">{artist}</p>
+              </div>
+              <LikeButton track={track} size={24} className="flex-shrink-0" />
             </div>
 
             <div className="flex items-center gap-8">
