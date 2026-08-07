@@ -1,6 +1,10 @@
 import { Library } from 'lucide-react'
+import { FcGoogle } from 'react-icons/fc'
+import { useAuthStore } from '../auth/authStore'
 
 export function LibraryPage() {
+  const openConsentModal = useAuthStore((state) => state.openConsentModal)
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 py-16 text-center">
       <Library size={48} className="text-neutral-500" />
@@ -11,10 +15,11 @@ export function LibraryPage() {
       </p>
       <button
         type="button"
-        disabled
-        className="cursor-not-allowed rounded-full bg-neutral-800 px-5 py-2 text-sm font-medium text-neutral-500"
+        onClick={openConsentModal}
+        className="flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition hover:bg-neutral-200"
       >
-        Se connecter
+        <FcGoogle size={18} />
+        Se connecter avec Google
       </button>
     </div>
   )

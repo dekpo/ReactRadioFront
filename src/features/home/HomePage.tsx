@@ -106,7 +106,6 @@ export function HomePage() {
           >
             <SiInstagram /> Instagram
           </a>
-          <span>!</span>
         </p>
       </section>
     </div>

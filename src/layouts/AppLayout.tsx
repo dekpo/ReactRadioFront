@@ -4,6 +4,7 @@ import { BottomNav } from '../components/navigation/BottomNav'
 import { BottomPlayer } from '../features/player/BottomPlayer'
 import { ConnectionBanner } from '../features/player/ConnectionBanner'
 import { NowPlayingOverlay } from '../features/player/NowPlayingOverlay'
+import { ConsentModal } from '../features/auth/ConsentModal'
 
 export function AppLayout() {
   return (
@@ -20,6 +21,7 @@ export function AppLayout() {
         <BottomNav />
       </div>
       <NowPlayingOverlay />
+      <ConsentModal />
     </div>
   )
 }
