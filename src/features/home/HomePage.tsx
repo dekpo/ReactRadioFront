@@ -95,7 +95,7 @@ export function HomePage() {
         <h2 className="text-xl font-semibold">À propos de la radio</h2>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-relaxed text-neutral-300">
           <span>
-            Vous voulez des infos sur cette radio et/ou être diffusé…
+            Vous voulez des infos sur cette radio et/ou être diffusé… ? 
             contactez l'artiste YOLOGAZA sur
           </span>
           <a
