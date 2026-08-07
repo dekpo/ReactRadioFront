@@ -1,26 +1,48 @@
 import { create } from 'zustand'
-
-interface AuthUser {
-  displayName: string
-  email: string
-  avatarUrl: string | null
-}
+import { backendApi, type BackendUser } from '../../lib/backendApi'
 
 interface AuthState {
-  user: AuthUser | null
+  user: BackendUser | null
+  // True while checking for an existing session on app load.
+  isBootstrapping: boolean
   // Controls the consent modal shown before starting the Google sign-in
   // flow (GDPR: explicit, tracked consent to data processing — see
   // AI-Context/handoff-phase2-accounts-likes for the rationale).
   isConsentModalOpen: boolean
   openConsentModal: () => void
   closeConsentModal: () => void
-  setUser: (user: AuthUser | null) => void
+  bootstrap: () => Promise<void>
+  loginWithGoogleIdToken: (idToken: string) => Promise<void>
+  logout: () => Promise<void>
+  deleteAccount: () => Promise<void>
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  isBootstrapping: true,
   isConsentModalOpen: false,
   openConsentModal: () => set({ isConsentModalOpen: true }),
   closeConsentModal: () => set({ isConsentModalOpen: false }),
-  setUser: (user) => set({ user }),
+  bootstrap: async () => {
+    try {
+      const user = await backendApi.me()
+      set({ user })
+    } catch {
+      set({ user: null })
+    } finally {
+      set({ isBootstrapping: false })
+    }
+  },
+  loginWithGoogleIdToken: async (idToken) => {
+    const user = await backendApi.googleLogin(idToken)
+    set({ user })
+  },
+  logout: async () => {
+    await backendApi.logout()
+    set({ user: null })
+  },
+  deleteAccount: async () => {
+    await backendApi.deleteAccount()
+    set({ user: null })
+  },
 }))

@@ -32,9 +32,18 @@ the existing nginx, see [Deployment](#deployment) below).
       (track/artist/show names) is HTML-entity-decoded, so accents, cedillas
       and apostrophes always display correctly
 - [x] Deployed to production (see below)
-- [ ] `Library` — disabled placeholder ("coming soon"), pending backend/auth
-- [ ] User accounts, liked tracks / playlists (Phase 2, needs a dedicated
-      backend)
+- [x] **Phase 2 (in progress)** — Google Sign-In (via `@react-oauth/google`),
+      GDPR consent modal before starting the OAuth flow, `/confidentialite`
+      privacy policy page, connected/disconnected states in `Library`
+      (profile, logout, delete account) — backed by the new
+      [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend)
+      FastAPI service (`/app-api/*`, proxied in dev via `vite.config.ts`)
+- [ ] Liked tracks list + on-demand playback of a liked track (backend
+      endpoints already exist, frontend UI not built yet)
+
+See `backend/README.md` in
+[`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend) for the
+API this frontend talks to.
 
 See `AI-Context/handoff-frontend-redesign/roadmap.md` and
 `AI-Context/journal/` (in the parent repo, not committed here) for the full
@@ -51,6 +60,7 @@ history and multi-phase plan.
 - [Framer Motion](https://www.framer.com/motion/) for animations (fullscreen
   player, carousel swipe gestures)
 - [lucide-react](https://lucide.dev/) + [react-icons](https://react-icons.github.io/react-icons/) (brand/social icons)
+- [@react-oauth/google](https://github.com/MomenSherif/react-oauth) for Google Sign-In
 - [Oxlint](https://oxc.rs/) for linting
 
 ## Getting started
@@ -63,6 +73,15 @@ npm run dev
 The dev server proxies `/api`, `/stream.mp3` and `/feeds` to
 `https://radio.yologaza.com` (see `vite.config.ts`), so the app works against
 the live LibreTime data without any local backend.
+
+For the Phase 2 features (Google Sign-In, likes), also:
+
+1. Copy `.env.example` to `.env.local` and set `VITE_GOOGLE_CLIENT_ID`
+   (get it from the project owner — see `ReactRadioBackend`'s README for
+   how it's created in Google Cloud Console).
+2. Run the `ReactRadioBackend` FastAPI service locally on port `8001` —
+   `/app-api` is proxied there by `vite.config.ts`, same-origin, no CORS
+   needed.
 
 Other scripts:
 
@@ -80,11 +99,17 @@ src/
   features/
     home/                  # Home page: intro, social icons, carousel, bio
     schedule/               # Today's schedule, powered by /api/week-info
-    library/                # Placeholder for future "liked tracks" feature
+    library/                # Connected/disconnected states, profile, logout,
+                             # delete account (liked tracks list: not built yet)
+    auth/                   # authStore (Zustand), GDPR consent modal + Google
+                             # Sign-In button
+    legal/                  # /confidentialite privacy policy page
     player/                 # Bottom player, fullscreen overlay, connection
                              # banner, Zustand store, live-info hook
   layouts/                  # AppLayout (shell combining nav + player + routes)
-  lib/api.ts                 # Typed client for the LibreTime "legacy" API
+  lib/
+    api.ts                  # Typed client for the LibreTime "legacy" API
+    backendApi.ts            # Typed client for our own FastAPI backend (/app-api)
 ```
 
 ## Backend / API

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from '../components/navigation/Sidebar'
 import { BottomNav } from '../components/navigation/BottomNav'
@@ -5,8 +6,15 @@ import { BottomPlayer } from '../features/player/BottomPlayer'
 import { ConnectionBanner } from '../features/player/ConnectionBanner'
 import { NowPlayingOverlay } from '../features/player/NowPlayingOverlay'
 import { ConsentModal } from '../features/auth/ConsentModal'
+import { useAuthStore } from '../features/auth/authStore'
 
 export function AppLayout() {
+  const bootstrap = useAuthStore((state) => state.bootstrap)
+
+  useEffect(() => {
+    bootstrap()
+  }, [bootstrap])
+
   return (
     <div className="flex h-dvh flex-col bg-black text-white">
       <div className="flex flex-1 overflow-hidden">

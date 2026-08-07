@@ -3,7 +3,53 @@ import { FcGoogle } from 'react-icons/fc'
 import { useAuthStore } from '../auth/authStore'
 
 export function LibraryPage() {
-  const openConsentModal = useAuthStore((state) => state.openConsentModal)
+  const { user, isBootstrapping, openConsentModal, logout, deleteAccount } =
+    useAuthStore()
+
+  if (isBootstrapping) {
+    return null
+  }
+
+  if (user) {
+    return (
+      <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 py-16 text-center">
+        {user.avatar_url && (
+          <img
+            src={user.avatar_url}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="h-16 w-16 rounded-full"
+          />
+        )}
+        <h1 className="text-xl font-semibold">
+          {user.display_name ?? user.email}
+        </h1>
+        <p className="max-w-sm text-sm text-neutral-400">
+          Tes morceaux likés arrivent bientôt ici.
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="rounded-full bg-neutral-800 px-5 py-2 text-sm font-medium text-white transition hover:bg-neutral-700"
+          >
+            Se déconnecter
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Supprimer définitivement ton compte et tes morceaux likés ?')) {
+                deleteAccount()
+              }
+            }}
+            className="rounded-full px-5 py-2 text-sm font-medium text-red-400 transition hover:text-red-300"
+          >
+            Supprimer mon compte
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 py-16 text-center">

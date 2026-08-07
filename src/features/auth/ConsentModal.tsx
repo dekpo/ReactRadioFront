@@ -1,14 +1,16 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { FcGoogle } from 'react-icons/fc'
+import { GoogleLogin } from '@react-oauth/google'
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import { useAuthStore } from './authStore'
-import { startGoogleSignIn } from './googleAuth'
 
 export function ConsentModal() {
-  const { isConsentModalOpen, closeConsentModal } = useAuthStore()
+  const { isConsentModalOpen, closeConsentModal, loginWithGoogleIdToken } =
+    useAuthStore()
+  const [error, setError] = useState<string | null>(null)
 
-  const handleContinue = () => {
-    startGoogleSignIn()
+  const handleClose = () => {
+    setError(null)
     closeConsentModal()
   }
 
@@ -20,7 +22,7 @@ export function ConsentModal() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={closeConsentModal}
+          onClick={handleClose}
         >
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
@@ -42,26 +44,38 @@ export function ConsentModal() {
               depuis la Bibliothèque.{' '}
               <Link
                 to="/confidentialite"
-                onClick={closeConsentModal}
+                onClick={handleClose}
                 className="underline hover:text-white"
               >
                 Voir la politique de confidentialité
               </Link>
               .
             </p>
-            <div className="mt-6 flex flex-col gap-2">
+
+            <div className="mt-6 flex flex-col items-center gap-2">
+              <GoogleLogin
+                onSuccess={async (credentialResponse) => {
+                  if (!credentialResponse.credential) {
+                    setError('Connexion Google annulée ou invalide.')
+                    return
+                  }
+                  try {
+                    await loginWithGoogleIdToken(credentialResponse.credential)
+                    handleClose()
+                  } catch {
+                    setError('Impossible de te connecter, réessaie plus tard.')
+                  }
+                }}
+                onError={() => setError('Connexion Google annulée ou invalide.')}
+                theme="filled_black"
+                shape="pill"
+                text="continue_with"
+              />
+              {error && <p className="text-xs text-red-400">{error}</p>}
               <button
                 type="button"
-                onClick={handleContinue}
-                className="flex items-center justify-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-neutral-200"
-              >
-                <FcGoogle size={18} />
-                Continuer avec Google
-              </button>
-              <button
-                type="button"
-                onClick={closeConsentModal}
-                className="rounded-full px-5 py-2.5 text-sm font-medium text-neutral-400 transition hover:text-white"
+                onClick={handleClose}
+                className="mt-2 rounded-full px-5 py-2.5 text-sm font-medium text-neutral-400 transition hover:text-white"
               >
                 Annuler
               </button>

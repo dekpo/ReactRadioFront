@@ -25,6 +25,13 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // New FastAPI backend (Phase 2), run locally via `uvicorn` on 8001.
+      // Same-origin via this proxy in dev, same as the /app-api nginx
+      // prefix planned for production — avoids CORS entirely.
+      '/app-api': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
     },
   },
 })
