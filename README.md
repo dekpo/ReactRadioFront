@@ -35,11 +35,16 @@ the existing nginx, see [Deployment](#deployment) below).
 - [x] **Phase 2 (in progress)** — Google Sign-In (via `@react-oauth/google`),
       GDPR consent modal before starting the OAuth flow, `/confidentialite`
       privacy policy page, connected/disconnected states in `Library`
-      (profile, logout, delete account) — backed by the new
+      (profile, logout, delete account via a reusable `ConfirmDialog`,
+      liked tracks list) — backed by the new
       [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend)
       FastAPI service (`/app-api/*`, proxied in dev via `vite.config.ts`)
-- [ ] Liked tracks list + on-demand playback of a liked track (backend
-      endpoints already exist, frontend UI not built yet)
+- [x] Like/unlike the currently playing track (heart button in
+      `BottomPlayer` and the fullscreen "Now Playing" overlay, hidden for
+      jingles/interludes), confirmed working end-to-end against real
+      LibreTime data
+- [ ] On-demand playback of a liked track (backend endpoint exists, no
+      frontend UI yet)
 
 See `backend/README.md` in
 [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend) for the
@@ -100,13 +105,16 @@ src/
     home/                  # Home page: intro, social icons, carousel, bio
     schedule/               # Today's schedule, powered by /api/week-info
     library/                # Connected/disconnected states, profile, logout,
-                             # delete account (liked tracks list: not built yet)
+                             # delete account, liked tracks list
     auth/                   # authStore (Zustand), GDPR consent modal + Google
                              # Sign-In button
+    likes/                  # likesStore (Zustand), LikeButton (heart on the
+                             # currently playing track)
     legal/                  # /confidentialite privacy policy page
     player/                 # Bottom player, fullscreen overlay, connection
                              # banner, Zustand store, live-info hook
   layouts/                  # AppLayout (shell combining nav + player + routes)
+  components/ui/            # Shared, reusable UI (e.g. ConfirmDialog)
   lib/
     api.ts                  # Typed client for the LibreTime "legacy" API
     backendApi.ts            # Typed client for our own FastAPI backend (/app-api)

@@ -49,60 +49,68 @@ export function NowPlayingOverlay() {
             </button>
           </div>
 
-          <div className="relative flex flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-8 py-4">
-            <div className="flex h-64 w-64 items-center justify-center overflow-hidden rounded-2xl bg-neutral-800 shadow-2xl sm:h-80 sm:w-80">
-              {artwork ? (
-                <img src={artwork} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full bg-gradient-to-br from-red-900/60 to-neutral-800" />
-              )}
-            </div>
-
-            <div className="flex w-full max-w-sm items-center justify-center gap-3">
-              <div className="min-w-0 flex-1 text-center">
-                <p className="truncate text-2xl font-bold">{title}</p>
-                <p className="mt-1 truncate text-neutral-300">{artist}</p>
-              </div>
-              <LikeButton track={track} size={24} className="flex-shrink-0" />
-            </div>
-
-            <div className="flex items-center gap-8">
-              <button
-                type="button"
-                disabled
-                aria-label="Previous (unavailable on a live stream)"
-                className="cursor-not-allowed text-neutral-500"
-              >
-                <SkipBack size={28} />
-              </button>
-              <button
-                type="button"
-                onClick={togglePlay}
-                disabled={isBuffering}
-                aria-label={isBuffering ? 'Loading' : isPlaying ? 'Pause' : 'Play'}
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black transition hover:scale-105 disabled:cursor-wait"
-              >
-                {isBuffering ? (
-                  <Loader2 size={28} className="animate-spin" />
-                ) : isPlaying ? (
-                  <Pause size={28} />
+          <div className="relative flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-4">
+            <div className="w-full max-w-sm">
+              <div className="aspect-square w-full overflow-hidden rounded-lg bg-neutral-800 shadow-2xl">
+                {artwork ? (
+                  <img src={artwork} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <Play size={28} />
+                  <div className="h-full w-full bg-gradient-to-br from-red-900/60 to-neutral-800" />
                 )}
-              </button>
-              <button
-                type="button"
-                disabled
-                aria-label="Next (unavailable on a live stream)"
-                className="cursor-not-allowed text-neutral-500"
-              >
-                <SkipForward size={28} />
-              </button>
-            </div>
+              </div>
 
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-red-500">
-              <span className="h-2 w-2 rounded-full bg-red-500" /> LIVE
-            </span>
+              {/* Spotify-style layout: title/artist left-aligned, heart
+                  pinned to the right on the same row — rather than
+                  everything centered, which reads as less polished and
+                  leaves the like button oddly floating next to the text. */}
+              <div className="mt-6 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="truncate text-xl font-bold sm:text-2xl">{title}</p>
+                  <p className="mt-1 truncate text-sm text-neutral-300">{artist}</p>
+                </div>
+                <LikeButton track={track} size={24} className="flex-shrink-0" />
+              </div>
+
+              <div className="mt-8 flex items-center justify-center gap-8">
+                <button
+                  type="button"
+                  disabled
+                  aria-label="Previous (unavailable on a live stream)"
+                  className="cursor-not-allowed text-neutral-500"
+                >
+                  <SkipBack size={28} />
+                </button>
+                <button
+                  type="button"
+                  onClick={togglePlay}
+                  disabled={isBuffering}
+                  aria-label={isBuffering ? 'Loading' : isPlaying ? 'Pause' : 'Play'}
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black transition hover:scale-105 disabled:cursor-wait"
+                >
+                  {isBuffering ? (
+                    <Loader2 size={28} className="animate-spin" />
+                  ) : isPlaying ? (
+                    <Pause size={28} />
+                  ) : (
+                    <Play size={28} />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  aria-label="Next (unavailable on a live stream)"
+                  className="cursor-not-allowed text-neutral-500"
+                >
+                  <SkipForward size={28} />
+                </button>
+              </div>
+
+              <div className="mt-6 flex justify-center">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-red-500">
+                  <span className="h-2 w-2 rounded-full bg-red-500" /> LIVE
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Anchored to the bottom of the screen (outside the centered
