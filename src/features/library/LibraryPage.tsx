@@ -120,7 +120,7 @@ export function LibraryPage() {
       </p>
       <button
         type="button"
-        onClick={openConsentModal}
+        onClick={() => openConsentModal()}
         className="flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition hover:bg-neutral-200"
       >
         <FcGoogle size={18} />
