@@ -56,7 +56,7 @@ export function ConsentModal() {
             <p className="mt-3 text-sm text-neutral-400">
               Tu peux supprimer ton compte et tes données à tout moment
               depuis la Bibliothèque.{' '}
-              <Link
+              <br /><Link
                 to="/confidentialite"
                 onClick={handleCloseAndLeave}
                 className="underline hover:text-white"
