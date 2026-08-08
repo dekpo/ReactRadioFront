@@ -32,19 +32,23 @@ the existing nginx, see [Deployment](#deployment) below).
       (track/artist/show names) is HTML-entity-decoded, so accents, cedillas
       and apostrophes always display correctly
 - [x] Deployed to production (see below)
-- [x] **Phase 2 (in progress)** — Google Sign-In (via `@react-oauth/google`),
-      GDPR consent modal before starting the OAuth flow, `/confidentialite`
-      privacy policy page, connected/disconnected states in `Library`
-      (profile, logout, delete account via a reusable `ConfirmDialog`,
-      liked tracks list) — backed by the new
-      [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend)
-      FastAPI service (`/app-api/*`, proxied in dev via `vite.config.ts`)
+- [x] **Phase 2 (deployed to production, 2026-08-08)** — Google Sign-In
+      (via `@react-oauth/google`), GDPR consent modal before starting the
+      OAuth flow, `/confidentialite` privacy policy page, connected/
+      disconnected states in `Library` (profile, logout, delete account
+      via a reusable `ConfirmDialog`, liked tracks list) — backed by the
+      new [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend)
+      FastAPI service (`/app-api/*`, proxied in dev via `vite.config.ts`,
+      proxied by nginx in production)
 - [x] Like/unlike the currently playing track (heart button in
       `BottomPlayer` and the fullscreen "Now Playing" overlay, hidden for
-      jingles/interludes), confirmed working end-to-end against real
-      LibreTime data
+      jingles/interludes), confirmed working end-to-end in production
+      against real LibreTime data
+- [x] The fullscreen "Now Playing" overlay auto-collapses on route change
+      or successful Google login (so the page navigated to is actually
+      visible), but stays open if the consent modal is simply cancelled
 - [ ] On-demand playback of a liked track (backend endpoint exists, no
-      frontend UI yet)
+      frontend UI yet — the main remaining piece of Phase 2)
 
 See `backend/README.md` in
 [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend) for the

@@ -1,19 +1,30 @@
 import { useEffect } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from '../components/navigation/Sidebar'
 import { BottomNav } from '../components/navigation/BottomNav'
 import { BottomPlayer } from '../features/player/BottomPlayer'
 import { ConnectionBanner } from '../features/player/ConnectionBanner'
 import { NowPlayingOverlay } from '../features/player/NowPlayingOverlay'
+import { usePlayerStore } from '../features/player/playerStore'
 import { ConsentModal } from '../features/auth/ConsentModal'
 import { useAuthStore } from '../features/auth/authStore'
 
 export function AppLayout() {
   const bootstrap = useAuthStore((state) => state.bootstrap)
+  const location = useLocation()
+  const collapsePlayer = usePlayerStore((state) => state.collapse)
 
   useEffect(() => {
     bootstrap()
   }, [bootstrap])
+
+  // Whenever a main navigation page is opened (sidebar/bottom nav links, or
+  // the privacy policy link from inside the consent modal), close the
+  // fullscreen now-playing overlay so the newly loaded page is actually
+  // visible instead of being hidden behind it.
+  useEffect(() => {
+    collapsePlayer()
+  }, [location.pathname, collapsePlayer])
 
   return (
     <div className="flex h-dvh flex-col bg-black text-white">
