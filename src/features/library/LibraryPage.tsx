@@ -54,7 +54,8 @@ export function LibraryPage() {
 
         <div>
           <h2 className="mb-3 text-sm font-semibold text-neutral-400">
-            Morceaux likés
+            Morceaux likés: Réécoute tes morceaux likés.<br />Cette fonctionnalité
+            arrive dans une prochaine mise à jour.
           </h2>
           {isLoading && likes.length === 0 && (
             <p className="text-sm text-neutral-500">Chargement…</p>
@@ -115,7 +116,7 @@ export function LibraryPage() {
       <Library size={48} className="text-neutral-500" />
       <h1 className="text-xl font-semibold">Bientôt disponible</h1>
       <p className="max-w-sm text-sm text-neutral-400">
-        Connecte-toi pour retrouver tes morceaux likés. Cette fonctionnalité
+        Connecte-toi pour retrouver tes morceaux likés. <br />Cette fonctionnalité
         arrive dans une prochaine mise à jour.
       </p>
       <button
