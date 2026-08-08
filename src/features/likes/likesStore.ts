@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { backendApi, type Like } from '../../lib/backendApi'
 
-interface LikeTrackInfo {
+export interface LikeTrackInfo {
   file_id: number
   track_title?: string
   artist_name?: string

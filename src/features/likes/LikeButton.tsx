@@ -31,7 +31,14 @@ export function LikeButton({ track, size = 20, className = '' }: LikeButtonProps
     return (
       <button
         type="button"
-        onClick={openConsentModal}
+        onClick={() =>
+          openConsentModal({
+            file_id: fileId,
+            track_title: track?.metadata?.track_title,
+            artist_name: track?.metadata?.artist_name,
+            artwork_url: track?.metadata?.artwork_url,
+          })
+        }
         aria-label="Se connecter pour liker ce morceau"
         className={`text-neutral-500 transition hover:text-white ${className}`}
       >

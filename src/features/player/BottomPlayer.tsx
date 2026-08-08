@@ -1,16 +1,15 @@
 import { useEffect, useRef } from 'react'
-import {
-  Loader2,
-  Pause,
-  Play,
-  SkipBack,
-  SkipForward,
-  Volume2,
-} from 'lucide-react'
+import { motion, type PanInfo } from 'framer-motion'
+import { Loader2, Pause, Play, Volume2 } from 'lucide-react'
 import { STREAM_URL } from '../../lib/api'
 import { LikeButton } from '../likes/LikeButton'
 import { usePlayerStore } from './playerStore'
 import { useLiveInfo } from './useLiveInfo'
+
+// Mirrors the thresholds used for swipe-to-dismiss on the fullscreen
+// overlay (NowPlayingOverlay.tsx), just in the opposite (upward) direction.
+const SWIPE_EXPAND_DISTANCE = 60
+const SWIPE_EXPAND_VELOCITY = 400
 
 // Generic fallback shown on OS lock screens when the current track has no
 // artwork (rare, but LibreTime sometimes lacks it for some files).
@@ -251,8 +250,29 @@ export function BottomPlayer() {
     navigator.mediaSession.setActionHandler('nexttrack', null)
   }, [isPlaying])
 
+  // Swipe up (mobile) to open the fullscreen now-playing overlay, in
+  // addition to the existing tap target on the track info. Framer Motion
+  // tells drag and tap gestures apart by movement distance, so this
+  // doesn't interfere with tapping the play/like buttons below.
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    if (info.offset.y < -SWIPE_EXPAND_DISTANCE || info.velocity.y < -SWIPE_EXPAND_VELOCITY) {
+      expand()
+    }
+  }
+
   return (
-    <div className="flex items-center justify-between gap-4 border-t border-neutral-800 bg-neutral-950 px-4 py-3">
+    <motion.div
+      drag="y"
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={{ top: 0.5, bottom: 0 }}
+      onDragEnd={handleDragEnd}
+      className="relative flex items-center justify-between gap-4 border-t border-red-900/40 bg-gradient-to-r from-red-950 via-neutral-950 to-neutral-950 px-4 py-3"
+    >
+      {/* Thin accent line: the main visual cue (per design decision) that
+          this bar isn't just a static footer — it echoes the red gradient
+          used elsewhere (home hero, overlay artwork placeholder). */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-red-500/60 via-red-500/20 to-transparent" />
+
       <audio ref={audioRef} preload="none" />
 
       <button
@@ -278,15 +298,9 @@ export function BottomPlayer() {
 
       <LikeButton track={track} size={18} className="flex-shrink-0" />
 
+      {/* No previous/next controls here either — see NowPlayingOverlay.tsx
+          for why: this is a live stream, there's no queue to navigate. */}
       <div className="flex items-center gap-4">
-        <button
-          type="button"
-          disabled
-          className="hidden cursor-not-allowed text-neutral-600 sm:block"
-          aria-label="Previous (unavailable on a live stream)"
-        >
-          <SkipBack size={18} />
-        </button>
         <button
           type="button"
           onClick={togglePlay}
@@ -301,14 +315,6 @@ export function BottomPlayer() {
           ) : (
             <Play size={18} />
           )}
-        </button>
-        <button
-          type="button"
-          disabled
-          className="hidden cursor-not-allowed text-neutral-600 sm:block"
-          aria-label="Next (unavailable on a live stream)"
-        >
-          <SkipForward size={18} />
         </button>
       </div>
 
@@ -327,6 +333,6 @@ export function BottomPlayer() {
           className="w-24 accent-white"
         />
       </div>
-    </div>
+    </motion.div>
   )
 }

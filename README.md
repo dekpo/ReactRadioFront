@@ -41,12 +41,23 @@ the existing nginx, see [Deployment](#deployment) below).
       FastAPI service (`/app-api/*`, proxied in dev via `vite.config.ts`,
       proxied by nginx in production)
 - [x] Like/unlike the currently playing track (heart button in
-      `BottomPlayer` and the fullscreen "Now Playing" overlay, hidden for
-      jingles/interludes), confirmed working end-to-end in production
-      against real LibreTime data
+      `BottomPlayer` and the fullscreen "Now Playing" overlay, all track
+      types are likeable including jingles/interludes), confirmed working
+      end-to-end in production against real LibreTime data
 - [x] The fullscreen "Now Playing" overlay auto-collapses on route change
       or successful Google login (so the page navigated to is actually
-      visible), but stays open if the consent modal is simply cancelled
+      visible), but stays open if the consent modal is simply cancelled —
+      or if the login was triggered by tapping the heart on a track (the
+      like is performed automatically right after login instead)
+- [x] Mobile swipe gestures: swipe down on the fullscreen overlay to
+      dismiss it, swipe up on the bottom player to open it (both via
+      Framer Motion drag, matching native bottom-sheet conventions)
+- [x] No previous/next track controls anywhere on the live stream (removed
+      2026-08-08 — there's no queue to navigate yet; showing them, even
+      disabled or gated behind login, was more misleading than helpful)
+- [x] Bottom player restyled with a dark red-to-black gradient (consistent
+      with the home hero and overlay artwork placeholder) to read as more
+      clearly interactive
 - [ ] On-demand playback of a liked track (backend endpoint exists, no
       frontend UI yet — the main remaining piece of Phase 2)
 

@@ -1,16 +1,20 @@
-import { AnimatePresence, motion } from 'framer-motion'
 import {
-  ChevronDown,
-  Loader2,
-  Pause,
-  Play,
-  SkipBack,
-  SkipForward,
-} from 'lucide-react'
+  AnimatePresence,
+  motion,
+  useDragControls,
+  type PanInfo,
+} from 'framer-motion'
+import { ChevronDown, Loader2, Pause, Play } from 'lucide-react'
 import { ConnectionBanner } from './ConnectionBanner'
 import { LikeButton } from '../likes/LikeButton'
 import { useLiveInfo } from './useLiveInfo'
 import { usePlayerStore } from './playerStore'
+
+// How far (px) or how fast (px/s) a downward drag needs to go before it
+// counts as "swipe to dismiss" rather than a tap/scroll — mirrors the
+// standard mobile bottom-sheet pattern (e.g. Spotify's now-playing screen).
+const SWIPE_DISMISS_DISTANCE = 120
+const SWIPE_DISMISS_VELOCITY = 500
 
 export function NowPlayingOverlay() {
   const { isExpanded, isPlaying, isBuffering, togglePlay, collapse } =
@@ -22,6 +26,17 @@ export function NowPlayingOverlay() {
   const artist = track?.metadata?.artist_name ?? 'Live'
   const artwork = track?.metadata?.artwork_url
 
+  // Swipe-down-to-dismiss (mobile). Drag is only initiated from the handle
+  // area at the top (via dragControls + dragListener=false) rather than the
+  // whole sheet, so it never fights with vertical scrolling of the content
+  // below on short screens.
+  const dragControls = useDragControls()
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    if (info.offset.y > SWIPE_DISMISS_DISTANCE || info.velocity.y > SWIPE_DISMISS_VELOCITY) {
+      collapse()
+    }
+  }
+
   return (
     <AnimatePresence>
       {isExpanded && (
@@ -30,6 +45,12 @@ export function NowPlayingOverlay() {
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+          drag="y"
+          dragListener={false}
+          dragControls={dragControls}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.6 }}
+          onDragEnd={handleDragEnd}
           className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-neutral-950 text-white"
         >
           <div
@@ -38,15 +59,24 @@ export function NowPlayingOverlay() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black" />
 
-          <div className="relative flex items-center px-4 pt-6">
-            <button
-              type="button"
-              onClick={collapse}
-              aria-label="Minimize player"
-              className="rounded-full p-2 text-white/80 transition hover:bg-white/10 hover:text-white"
-            >
-              <ChevronDown size={28} />
-            </button>
+          <div
+            className="relative flex flex-col items-center px-4 pt-3"
+            style={{ touchAction: 'none' }}
+            onPointerDown={(e) => dragControls.start(e)}
+          >
+            {/* Grab handle: visual affordance that this sheet can be swiped
+                down, same convention as native mobile bottom sheets. */}
+            <div className="h-1 w-10 rounded-full bg-white/25" />
+            <div className="flex w-full items-center pt-3">
+              <button
+                type="button"
+                onClick={collapse}
+                aria-label="Minimize player"
+                className="rounded-full p-2 text-white/80 transition hover:bg-white/10 hover:text-white"
+              >
+                <ChevronDown size={28} />
+              </button>
+            </div>
           </div>
 
           <div className="relative flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-4">
@@ -71,15 +101,13 @@ export function NowPlayingOverlay() {
                 <LikeButton track={track} size={24} className="flex-shrink-0" />
               </div>
 
-              <div className="mt-8 flex items-center justify-center gap-8">
-                <button
-                  type="button"
-                  disabled
-                  aria-label="Previous (unavailable on a live stream)"
-                  className="cursor-not-allowed text-neutral-500"
-                >
-                  <SkipBack size={28} />
-                </button>
+              {/* No previous/next controls: this is a live stream, there is
+                  no queue to navigate yet. Showing disabled buttons (or
+                  worse, buttons that open the login modal but still do
+                  nothing afterwards) would be more confusing than helpful —
+                  revisit once on-demand playback of liked tracks supports
+                  real track-to-track navigation. */}
+              <div className="mt-8 flex items-center justify-center">
                 <button
                   type="button"
                   onClick={togglePlay}
@@ -94,14 +122,6 @@ export function NowPlayingOverlay() {
                   ) : (
                     <Play size={28} />
                   )}
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  aria-label="Next (unavailable on a live stream)"
-                  className="cursor-not-allowed text-neutral-500"
-                >
-                  <SkipForward size={28} />
                 </button>
               </div>
 

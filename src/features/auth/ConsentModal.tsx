@@ -7,7 +7,7 @@ import { useAuthStore } from './authStore'
 import { usePlayerStore } from '../player/playerStore'
 
 export function ConsentModal() {
-  const { isConsentModalOpen, closeConsentModal, loginWithGoogleCode } =
+  const { isConsentModalOpen, pendingLikeIntent, closeConsentModal, loginWithGoogleCode } =
     useAuthStore()
   const collapsePlayer = usePlayerStore((state) => state.collapse)
   const [error, setError] = useState<string | null>(null)
@@ -21,13 +21,28 @@ export function ConsentModal() {
     closeConsentModal()
   }
 
-  // Successful login, or following the privacy policy link: the user is
-  // now looking at something else, so the overlay (if it was open behind
-  // this modal) needs to close too or that "something else" stays hidden.
+  // Following the privacy policy link: the user is now looking at
+  // something else, so the overlay (if it was open behind this modal)
+  // needs to close too or that "something else" stays hidden.
   const handleCloseAndLeave = () => {
     setError(null)
     closeConsentModal()
     collapsePlayer()
+  }
+
+  // Successful login: if it was triggered by tapping the heart while
+  // signed out (pendingLikeIntent set), the user's actual goal was to like
+  // that track and keep looking at it — `loginWithGoogleCode` already
+  // performed the like, so just close the modal and leave the fullscreen
+  // overlay open. Otherwise (generic "sign in" entry point), behave like
+  // any other navigation and close the overlay too.
+  const handleLoginSuccess = () => {
+    setError(null)
+    if (pendingLikeIntent) {
+      closeConsentModal()
+    } else {
+      handleCloseAndLeave()
+    }
   }
 
   // Custom-styled button + popup auth-code flow, instead of Google's own
@@ -44,7 +59,7 @@ export function ConsentModal() {
       setIsSubmitting(true)
       try {
         await loginWithGoogleCode(codeResponse.code)
-        handleCloseAndLeave()
+        handleLoginSuccess()
       } catch {
         setError('Impossible de te connecter, réessaie plus tard.')
       } finally {

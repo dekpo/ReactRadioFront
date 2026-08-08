@@ -21,9 +21,11 @@ export interface LiveTrack {
   }
 }
 
-// Real tracks and instrumentals are likeable; jingles/interludes are not.
-// Decided 2026-08-06, see feasibility-checklist.md §2.
-export const LIKEABLE_TRACK_TYPE_IDS = [1, 4]
+// All track types are likeable, including jingles/interludes — left as a
+// list (rather than removing the check entirely) so this remains a
+// one-line, easily reversible product decision if that changes again.
+// Was [1, 4] (tracks/instrumentals only) until 2026-08-08.
+export const LIKEABLE_TRACK_TYPE_IDS = [1, 2, 3, 4]
 
 export interface LiveShow {
   name: string
