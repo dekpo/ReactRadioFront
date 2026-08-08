@@ -1,15 +1,17 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { GoogleLogin } from '@react-oauth/google'
+import { useGoogleLogin } from '@react-oauth/google'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
+import { FcGoogle } from 'react-icons/fc'
 import { useAuthStore } from './authStore'
 import { usePlayerStore } from '../player/playerStore'
 
 export function ConsentModal() {
-  const { isConsentModalOpen, closeConsentModal, loginWithGoogleIdToken } =
+  const { isConsentModalOpen, closeConsentModal, loginWithGoogleCode } =
     useAuthStore()
   const collapsePlayer = usePlayerStore((state) => state.collapse)
   const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Plain cancel (backdrop click or "Annuler"): the user changed their mind
   // and isn't going anywhere, so leave the fullscreen now-playing overlay
@@ -27,6 +29,30 @@ export function ConsentModal() {
     closeConsentModal()
     collapsePlayer()
   }
+
+  // Custom-styled button + popup auth-code flow, instead of Google's own
+  // <GoogleLogin> widget: that widget always renders a "Continuer en tant
+  // que <nom>" personalized card (with avatar) on a light background for
+  // returning users — a Google branding rule that can't be overridden via
+  // `theme`, and looked out of place in this dark modal. This flow only
+  // ever shows Google's native popup window, never an embedded widget, so
+  // our own button fully controls the look. The resulting `code` is
+  // exchanged for an ID token server-side (see backend/app/auth.py).
+  const login = useGoogleLogin({
+    flow: 'auth-code',
+    onSuccess: async (codeResponse) => {
+      setIsSubmitting(true)
+      try {
+        await loginWithGoogleCode(codeResponse.code)
+        handleCloseAndLeave()
+      } catch {
+        setError('Impossible de te connecter, réessaie plus tard.')
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    onError: () => setError('Connexion Google annulée ou invalide.'),
+  })
 
   return (
     <AnimatePresence>
@@ -67,33 +93,15 @@ export function ConsentModal() {
             </p>
 
             <div className="mt-6 flex flex-col items-center gap-2">
-              {/* Google renders a "Continuer en tant que <nom>" personalized
-                  card (with avatar) instead of the plain themed button when
-                  the browser already has an active Google session — always
-                  on a light background, a Google branding rule we can't
-                  override via `theme`. Wrapping it in its own light card
-                  makes that look deliberate instead of a stray white box
-                  floating in the dark modal. */}
-              <div className="rounded-2xl bg-white p-1 shadow-sm">
-                <GoogleLogin
-                  onSuccess={async (credentialResponse) => {
-                    if (!credentialResponse.credential) {
-                      setError('Connexion Google annulée ou invalide.')
-                      return
-                    }
-                    try {
-                      await loginWithGoogleIdToken(credentialResponse.credential)
-                      handleCloseAndLeave()
-                    } catch {
-                      setError('Impossible de te connecter, réessaie plus tard.')
-                    }
-                  }}
-                  onError={() => setError('Connexion Google annulée ou invalide.')}
-                  theme="outline"
-                  shape="pill"
-                  text="continue_with"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => login()}
+                disabled={isSubmitting}
+                className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-neutral-200 disabled:opacity-50"
+              >
+                <FcGoogle size={18} />
+                {isSubmitting ? 'Connexion…' : 'Continuer avec Google'}
+              </button>
               {error && <p className="text-xs text-red-400">{error}</p>}
               <button
                 type="button"

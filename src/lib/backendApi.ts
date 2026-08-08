@@ -55,10 +55,10 @@ export interface Like {
 }
 
 export const backendApi = {
-  googleLogin: (idToken: string) =>
+  googleLogin: (code: string) =>
     request<BackendUser>('/auth/google/callback', {
       method: 'POST',
-      body: JSON.stringify({ id_token: idToken }),
+      body: JSON.stringify({ code }),
     }),
   logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
   me: () => request<BackendUser>('/me'),

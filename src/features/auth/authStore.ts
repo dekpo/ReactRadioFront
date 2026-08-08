@@ -13,7 +13,9 @@ interface AuthState {
   openConsentModal: () => void
   closeConsentModal: () => void
   bootstrap: () => Promise<void>
-  loginWithGoogleIdToken: (idToken: string) => Promise<void>
+  // `code`: OAuth 2.0 authorization code from the frontend's custom Google
+  // button (auth-code popup flow) — exchanged for an ID token server-side.
+  loginWithGoogleCode: (code: string) => Promise<void>
   logout: () => Promise<void>
   deleteAccount: () => Promise<void>
 }
@@ -34,8 +36,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ isBootstrapping: false })
     }
   },
-  loginWithGoogleIdToken: async (idToken) => {
-    const user = await backendApi.googleLogin(idToken)
+  loginWithGoogleCode: async (code) => {
+    const user = await backendApi.googleLogin(code)
     set({ user })
   },
   logout: async () => {
