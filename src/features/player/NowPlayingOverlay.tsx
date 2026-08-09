@@ -4,7 +4,7 @@ import {
   useDragControls,
   type PanInfo,
 } from 'framer-motion'
-import { ChevronDown, Loader2, Pause, Play } from 'lucide-react'
+import { ChevronDown, Loader2, Pause, Play, Radio, SkipBack, SkipForward } from 'lucide-react'
 import { ConnectionBanner } from './ConnectionBanner'
 import { LikeButton } from '../likes/LikeButton'
 import { useLiveInfo } from './useLiveInfo'
@@ -17,14 +17,36 @@ const SWIPE_DISMISS_DISTANCE = 120
 const SWIPE_DISMISS_VELOCITY = 500
 
 export function NowPlayingOverlay() {
-  const { isExpanded, isPlaying, isBuffering, togglePlay, collapse } =
-    usePlayerStore()
+  const {
+    mode,
+    isExpanded,
+    isPlaying,
+    isBuffering,
+    togglePlay,
+    collapse,
+    currentOndemandTrack,
+    isPlayingTransitionJingle,
+    ondemandNext,
+    ondemandPrevious,
+    returnToLive,
+  } = usePlayerStore()
   const { data } = useLiveInfo()
+  const isOndemand = mode === 'ondemand'
 
-  const track = data?.current
-  const title = track?.metadata?.track_title ?? track?.name ?? 'Radio Yologaza'
-  const artist = track?.metadata?.artist_name ?? 'Live'
-  const artwork = track?.metadata?.artwork_url
+  const liveTrack = data?.current
+  const title = isPlayingTransitionJingle
+    ? 'Retour au direct…'
+    : isOndemand && currentOndemandTrack
+      ? currentOndemandTrack.title
+      : (liveTrack?.metadata?.track_title ?? liveTrack?.name ?? 'Radio Yologaza')
+  const artist = isPlayingTransitionJingle
+    ? ''
+    : isOndemand && currentOndemandTrack
+      ? currentOndemandTrack.artist
+      : (liveTrack?.metadata?.artist_name ?? 'Live')
+  const artwork = isOndemand
+    ? (currentOndemandTrack?.artworkUrl ?? undefined)
+    : liveTrack?.metadata?.artwork_url
 
   // Swipe-down-to-dismiss (mobile). Drag is only initiated from the handle
   // area at the top (via dragControls + dragListener=false) rather than the
@@ -98,16 +120,27 @@ export function NowPlayingOverlay() {
                   <p className="truncate text-xl font-bold sm:text-2xl">{title}</p>
                   <p className="mt-1 truncate text-sm text-neutral-300">{artist}</p>
                 </div>
-                <LikeButton track={track} size={24} className="flex-shrink-0" />
+                {/* No like button while playing on-demand: the track is
+                    already necessarily in the user's library. */}
+                {!isOndemand && (
+                  <LikeButton track={liveTrack} size={24} className="flex-shrink-0" />
+                )}
               </div>
 
-              {/* No previous/next controls: this is a live stream, there is
-                  no queue to navigate yet. Showing disabled buttons (or
-                  worse, buttons that open the login modal but still do
-                  nothing afterwards) would be more confusing than helpful —
-                  revisit once on-demand playback of liked tracks supports
-                  real track-to-track navigation. */}
-              <div className="mt-8 flex items-center justify-center">
+              {/* Previous/next only make sense for an on-demand queue: on
+                  the live stream there's nothing to navigate to. */}
+              <div className="mt-8 flex items-center justify-center gap-8">
+                {isOndemand && !isPlayingTransitionJingle && (
+                  <button
+                    type="button"
+                    onClick={ondemandPrevious}
+                    aria-label="Morceau précédent"
+                    className="text-white/80 transition hover:text-white"
+                  >
+                    <SkipBack size={26} />
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={togglePlay}
@@ -123,12 +156,33 @@ export function NowPlayingOverlay() {
                     <Play size={28} />
                   )}
                 </button>
+
+                {isOndemand && !isPlayingTransitionJingle && (
+                  <button
+                    type="button"
+                    onClick={ondemandNext}
+                    aria-label="Morceau suivant"
+                    className="text-white/80 transition hover:text-white"
+                  >
+                    <SkipForward size={26} />
+                  </button>
+                )}
               </div>
 
               <div className="mt-6 flex justify-center">
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-red-500">
-                  <span className="h-2 w-2 rounded-full bg-red-500" /> LIVE
-                </span>
+                {isOndemand ? (
+                  <button
+                    type="button"
+                    onClick={returnToLive}
+                    className="flex items-center gap-1.5 rounded-full border border-red-500/50 px-4 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-500/10"
+                  >
+                    <Radio size={14} /> Revenir au direct
+                  </button>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-red-500">
+                    <span className="h-2 w-2 rounded-full bg-red-500" /> LIVE
+                  </span>
+                )}
               </div>
             </div>
           </div>

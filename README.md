@@ -58,8 +58,23 @@ the existing nginx, see [Deployment](#deployment) below).
 - [x] Bottom player restyled with a dark red-to-black gradient (consistent
       with the home hero and overlay artwork placeholder) to read as more
       clearly interactive
-- [ ] On-demand playback of a liked track (backend endpoint exists, no
-      frontend UI yet — the main remaining piece of Phase 2)
+- [x] **On-demand playback of liked tracks** (2026-08-09, closing out Phase
+      2): a "play" button on each item in the Library plays that liked
+      track outside the live stream (`playerStore`'s new `'live' |
+      'ondemand'` mode), reusing the same `<audio>` element as the live
+      stream — the live auto-reconnect logic is fully disabled while in
+      `ondemand` mode. Previous/next controls reappear, but only in
+      on-demand mode (queue = the liked tracks list at the moment playback
+      started). An explicit "Revenir au direct" button switches back to
+      live (no ambiguous close-to-resume-live behavior). At the end of the
+      queue, a random jingle plays as a transition before falling back to
+      live automatically (`GET /app-api/jingles/random/audio`, new
+      backend endpoint); any playback error (missing jingle/file) fails
+      safe by returning to live directly.
+      **Known limitation, deferred**: no like/unlike button while playing
+      on-demand (the track is definitionally already liked); persisted
+      drag-and-drop reordering of the liked-tracks list is a separate,
+      future piece of work (would need a backend migration).
 
 See `backend/README.md` in
 [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend) for the

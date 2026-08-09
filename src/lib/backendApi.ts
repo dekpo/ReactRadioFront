@@ -75,4 +75,9 @@ export const backendApi = {
     request<void>(`/likes/${fileId}`, { method: 'DELETE' }),
 }
 
+// Used directly as an <audio src>, not fetched via `request` — the browser
+// handles the Range requests / cookie auth itself.
+export const likeAudioUrl = (fileId: number) => `${BASE_URL}/likes/${fileId}/audio`
+export const randomJingleAudioUrl = () => `${BASE_URL}/jingles/random/audio`
+
 export { BackendApiError }

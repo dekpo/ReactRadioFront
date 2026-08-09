@@ -1,15 +1,28 @@
 import { useEffect, useState } from 'react'
-import { Heart, Library } from 'lucide-react'
+import { Library, Pause, Play } from 'lucide-react'
 import { FcGoogle } from 'react-icons/fc'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { useAuthStore } from '../auth/authStore'
 import { useLikesStore } from '../likes/likesStore'
+import { type OndemandTrack, usePlayerStore } from '../player/playerStore'
+import type { Like } from '../../lib/backendApi'
+
+function toOndemandTrack(like: Like): OndemandTrack {
+  return {
+    fileId: like.file_id,
+    title: like.track_title ?? 'Titre inconnu',
+    artist: like.artist_name ?? 'Artiste inconnu',
+    artworkUrl: like.artwork_url,
+  }
+}
 
 export function LibraryPage() {
   const { user, isBootstrapping, openConsentModal, logout, deleteAccount } =
     useAuthStore()
   const { likes, isLoading, hasLoaded, fetchLikes } = useLikesStore()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const { mode, currentOndemandTrack, isPlaying, playOndemand, togglePlay } =
+    usePlayerStore()
 
   useEffect(() => {
     if (user && !hasLoaded) fetchLikes()
@@ -54,8 +67,7 @@ export function LibraryPage() {
 
         <div>
           <h2 className="mb-3 text-sm font-semibold text-neutral-400">
-            Morceaux likés: Réécoute tes morceaux likés.<br />Cette fonctionnalité
-            arrive dans une prochaine mise à jour.
+            Morceaux likés — écoute-les à la demande, en dehors du direct.
           </h2>
           {isLoading && likes.length === 0 && (
             <p className="text-sm text-neutral-500">Chargement…</p>
@@ -67,31 +79,54 @@ export function LibraryPage() {
             </p>
           )}
           <ul className="flex flex-col gap-2">
-            {likes.map((like) => (
-              <li
-                key={like.file_id}
-                className="flex items-center gap-3 rounded-lg bg-neutral-800/50 p-3"
-              >
-                {like.artwork_url ? (
-                  <img
-                    src={like.artwork_url}
-                    alt=""
-                    className="h-12 w-12 flex-shrink-0 rounded object-cover"
-                  />
-                ) : (
-                  <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-700" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {like.track_title ?? 'Titre inconnu'}
-                  </p>
-                  <p className="truncate text-xs text-neutral-400">
-                    {like.artist_name ?? 'Artiste inconnu'}
-                  </p>
-                </div>
-                <Heart size={18} fill="currentColor" className="text-red-500" />
-              </li>
-            ))}
+            {likes.map((like, index) => {
+              const isCurrent =
+                mode === 'ondemand' && currentOndemandTrack?.fileId === like.file_id
+              return (
+                <li
+                  key={like.file_id}
+                  className={`flex items-center gap-3 rounded-lg p-3 transition ${
+                    isCurrent ? 'bg-red-500/10' : 'bg-neutral-800/50'
+                  }`}
+                >
+                  {like.artwork_url ? (
+                    <img
+                      src={like.artwork_url}
+                      alt=""
+                      className="h-12 w-12 flex-shrink-0 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-700" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`truncate text-sm font-medium ${isCurrent ? 'text-red-400' : ''}`}
+                    >
+                      {like.track_title ?? 'Titre inconnu'}
+                    </p>
+                    <p className="truncate text-xs text-neutral-400">
+                      {like.artist_name ?? 'Artiste inconnu'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      isCurrent
+                        ? togglePlay()
+                        : playOndemand(likes.map(toOndemandTrack), index)
+                    }
+                    aria-label={isCurrent && isPlaying ? 'Pause' : 'Lire'}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
+                  >
+                    {isCurrent && isPlaying ? (
+                      <Pause size={16} />
+                    ) : (
+                      <Play size={16} />
+                    )}
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </div>
 

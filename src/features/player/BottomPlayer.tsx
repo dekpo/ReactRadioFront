@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { motion, type PanInfo } from 'framer-motion'
-import { Loader2, Pause, Play, Volume2 } from 'lucide-react'
+import { Loader2, Pause, Play, SkipBack, SkipForward, Volume2, Radio } from 'lucide-react'
 import { STREAM_URL } from '../../lib/api'
+import { likeAudioUrl, randomJingleAudioUrl } from '../../lib/backendApi'
 import { LikeButton } from '../likes/LikeButton'
 import { usePlayerStore } from './playerStore'
 import { useLiveInfo } from './useLiveInfo'
@@ -16,6 +17,9 @@ const SWIPE_EXPAND_VELOCITY = 400
 const FALLBACK_ARTWORK = '/carousel/yologaza-1.jpeg'
 
 // Auto-reconnect tuning for flaky mobile connections (roaming, tunnels...).
+// Live-stream only — on-demand playback (own backend, plain HTTP file
+// streaming) doesn't need this: a failed/interrupted request there just
+// falls back to live rather than retrying (see handleError below).
 const MAX_RECONNECT_ATTEMPTS = 5
 const BASE_RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 16000
@@ -29,10 +33,23 @@ export function BottomPlayer() {
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stalledTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { isPlaying, isBuffering, volume, togglePlay, setVolume, expand } =
-    usePlayerStore()
+  const {
+    mode,
+    isPlaying,
+    isBuffering,
+    volume,
+    togglePlay,
+    setVolume,
+    expand,
+    currentOndemandTrack,
+    isPlayingTransitionJingle,
+    ondemandNext,
+    ondemandPrevious,
+    returnToLive,
+  } = usePlayerStore()
 
   const { data } = useLiveInfo()
+  const isOndemand = mode === 'ondemand'
 
   function clearReconnectTimers() {
     if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current)
@@ -57,10 +74,10 @@ export function BottomPlayer() {
 
   // Called on stream `error`, on a stalled `waiting` that lasted too long,
   // or on a failed `play()` — decides whether to retry, wait for the network
-  // to come back, or give up and let the user retry manually.
+  // to come back, or give up and let the user retry manually. Live-only.
   function scheduleReconnect() {
     const store = usePlayerStore.getState()
-    if (!store.isPlaying) return // user intentionally stopped, ignore
+    if (store.mode !== 'live' || !store.isPlaying) return // not live, or user intentionally stopped
     clearReconnectTimers()
 
     if (store.isOffline) {
@@ -87,9 +104,11 @@ export function BottomPlayer() {
     retryTimeoutRef.current = setTimeout(connectAndPlay, delay)
   }
 
+  // Live playback: connect/reconnect/disconnect. No-op while in on-demand
+  // mode (the effect below owns the <audio> element in that case).
   useEffect(() => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio || mode !== 'live') return
     if (isPlaying) {
       retryCountRef.current = 0
       usePlayerStore.getState().setStreamError(false)
@@ -104,7 +123,48 @@ export function BottomPlayer() {
       audio.load()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying])
+  }, [isPlaying, mode])
+
+  // Leaving live mode: never let a stray reconnect timer fire while we're
+  // now playing an on-demand track.
+  useEffect(() => {
+    if (mode !== 'live') clearReconnectTimers()
+  }, [mode])
+
+  // On-demand playback: load the current track (or transition jingle) into
+  // the same <audio> element whenever it changes.
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio || mode !== 'ondemand') return
+    const src = isPlayingTransitionJingle
+      ? randomJingleAudioUrl()
+      : currentOndemandTrack
+        ? likeAudioUrl(currentOndemandTrack.fileId)
+        : null
+    if (!src) return
+
+    usePlayerStore.getState().setBuffering(true)
+    audio.src = src
+    audio.load()
+    audio.play().catch(() => {
+      // Missing/broken file (e.g. no jingle in the database) — fail safe by
+      // returning to live rather than getting stuck.
+      usePlayerStore.getState().setBuffering(false)
+      usePlayerStore.getState().returnToLive()
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, currentOndemandTrack?.fileId, isPlayingTransitionJingle])
+
+  // On-demand playback: pause/resume without reloading the current track.
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio || mode !== 'ondemand') return
+    if (isPlaying) {
+      audio.play().catch(() => {})
+    } else {
+      audio.pause()
+    }
+  }, [isPlaying, mode])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -123,13 +183,23 @@ export function BottomPlayer() {
       applyMediaSessionMetadata()
     }
     // `waiting` fires if playback stalls (network hiccup). Give it
-    // STALLED_TIMEOUT_MS to resolve on its own before forcing a reconnect.
+    // STALLED_TIMEOUT_MS to resolve on its own before forcing a reconnect —
+    // live-stream only, on-demand playback just keeps buffering.
     const handleWaiting = () => {
       usePlayerStore.getState().setBuffering(true)
+      if (usePlayerStore.getState().mode !== 'live') return
       if (stalledTimeoutRef.current) clearTimeout(stalledTimeoutRef.current)
       stalledTimeoutRef.current = setTimeout(scheduleReconnect, STALLED_TIMEOUT_MS)
     }
-    const handleError = () => scheduleReconnect()
+    const handleError = () => {
+      const store = usePlayerStore.getState()
+      if (store.mode === 'live') {
+        scheduleReconnect()
+      } else {
+        // Broken/missing on-demand file: fail safe by returning to live.
+        store.returnToLive()
+      }
+    }
     // Only clear the buffering flag here for an *intentional* stop — the
     // reconnect logic above never calls audio.pause() directly.
     const handlePause = () => {
@@ -137,16 +207,28 @@ export function BottomPlayer() {
         usePlayerStore.getState().setBuffering(false)
       }
     }
+    // On-demand only: a track (or the transition jingle) reached its end.
+    const handleEnded = () => {
+      const store = usePlayerStore.getState()
+      if (store.mode !== 'ondemand') return
+      if (store.isPlayingTransitionJingle) {
+        store.returnToLive()
+      } else {
+        store.ondemandNext()
+      }
+    }
 
     audio.addEventListener('playing', handlePlaying)
     audio.addEventListener('waiting', handleWaiting)
     audio.addEventListener('error', handleError)
     audio.addEventListener('pause', handlePause)
+    audio.addEventListener('ended', handleEnded)
     return () => {
       audio.removeEventListener('playing', handlePlaying)
       audio.removeEventListener('waiting', handleWaiting)
       audio.removeEventListener('error', handleError)
       audio.removeEventListener('pause', handlePause)
+      audio.removeEventListener('ended', handleEnded)
       clearReconnectTimers()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -160,7 +242,9 @@ export function BottomPlayer() {
       usePlayerStore.getState().setOffline(false)
       // Jump straight back to a fresh connection attempt instead of waiting
       // for a stale retry timer — the whole point of roaming resilience.
-      if (usePlayerStore.getState().isPlaying) {
+      // Live-only: on-demand playback doesn't retry on network hiccups.
+      const store = usePlayerStore.getState()
+      if (store.mode === 'live' && store.isPlaying) {
         retryCountRef.current = 0
         connectAndPlay()
       }
@@ -182,10 +266,20 @@ export function BottomPlayer() {
     if (audioRef.current) audioRef.current.volume = volume
   }, [volume])
 
-  const track = data?.current
-  const title = track?.metadata?.track_title ?? track?.name ?? 'Radio Yologaza'
-  const artist = track?.metadata?.artist_name ?? 'Live'
-  const artwork = track?.metadata?.artwork_url
+  const liveTrack = data?.current
+  const title = isPlayingTransitionJingle
+    ? 'Retour au direct…'
+    : isOndemand && currentOndemandTrack
+      ? currentOndemandTrack.title
+      : (liveTrack?.metadata?.track_title ?? liveTrack?.name ?? 'Radio Yologaza')
+  const artist = isPlayingTransitionJingle
+    ? ''
+    : isOndemand && currentOndemandTrack
+      ? currentOndemandTrack.artist
+      : (liveTrack?.metadata?.artist_name ?? 'Live')
+  const artwork = isOndemand
+    ? (currentOndemandTrack?.artworkUrl ?? undefined)
+    : liveTrack?.metadata?.artwork_url
 
   // Kept in a ref so `applyMediaSessionMetadata` (called from the audio event
   // handlers below, outside React's render cycle) always reads the latest
@@ -245,10 +339,19 @@ export function BottomPlayer() {
     navigator.mediaSession.setActionHandler('pause', () =>
       usePlayerStore.getState().setPlaying(false),
     )
-    // No previous/next track on a live stream.
-    navigator.mediaSession.setActionHandler('previoustrack', null)
-    navigator.mediaSession.setActionHandler('nexttrack', null)
-  }, [isPlaying])
+    // Track navigation only makes sense for an on-demand queue.
+    if (isOndemand && !isPlayingTransitionJingle) {
+      navigator.mediaSession.setActionHandler('previoustrack', () =>
+        usePlayerStore.getState().ondemandPrevious(),
+      )
+      navigator.mediaSession.setActionHandler('nexttrack', () =>
+        usePlayerStore.getState().ondemandNext(),
+      )
+    } else {
+      navigator.mediaSession.setActionHandler('previoustrack', null)
+      navigator.mediaSession.setActionHandler('nexttrack', null)
+    }
+  }, [isPlaying, isOndemand, isPlayingTransitionJingle])
 
   // Swipe up (mobile) to open the fullscreen now-playing overlay, in
   // addition to the existing tap target on the track info. Framer Motion
@@ -296,11 +399,20 @@ export function BottomPlayer() {
         </div>
       </button>
 
-      <LikeButton track={track} size={18} className="flex-shrink-0" />
+      {!isOndemand && <LikeButton track={liveTrack} size={18} className="flex-shrink-0" />}
 
-      {/* No previous/next controls here either — see NowPlayingOverlay.tsx
-          for why: this is a live stream, there's no queue to navigate. */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
+        {isOndemand && !isPlayingTransitionJingle && (
+          <button
+            type="button"
+            onClick={ondemandPrevious}
+            aria-label="Morceau précédent"
+            className="hidden text-neutral-300 transition hover:text-white sm:block"
+          >
+            <SkipBack size={18} />
+          </button>
+        )}
+
         <button
           type="button"
           onClick={togglePlay}
@@ -316,23 +428,44 @@ export function BottomPlayer() {
             <Play size={18} />
           )}
         </button>
+
+        {isOndemand && !isPlayingTransitionJingle && (
+          <button
+            type="button"
+            onClick={ondemandNext}
+            aria-label="Morceau suivant"
+            className="hidden text-neutral-300 transition hover:text-white sm:block"
+          >
+            <SkipForward size={18} />
+          </button>
+        )}
       </div>
 
-      <div className="hidden items-center gap-2 md:flex">
-        <span className="flex items-center gap-1 text-xs font-semibold text-red-500">
-          <span className="h-2 w-2 rounded-full bg-red-500" /> LIVE
-        </span>
-        <Volume2 size={18} className="ml-4 text-neutral-400" />
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={volume}
-          onChange={(e) => setVolume(Number(e.target.value))}
-          className="w-24 accent-white"
-        />
-      </div>
+      {isOndemand ? (
+        <button
+          type="button"
+          onClick={returnToLive}
+          className="hidden flex-shrink-0 items-center gap-1.5 rounded-full border border-red-500/50 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-500/10 md:flex"
+        >
+          <Radio size={14} /> Revenir au direct
+        </button>
+      ) : (
+        <div className="hidden items-center gap-2 md:flex">
+          <span className="flex items-center gap-1 text-xs font-semibold text-red-500">
+            <span className="h-2 w-2 rounded-full bg-red-500" /> LIVE
+          </span>
+          <Volume2 size={18} className="ml-4 text-neutral-400" />
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+            className="w-24 accent-white"
+          />
+        </div>
+      )}
     </motion.div>
   )
 }
