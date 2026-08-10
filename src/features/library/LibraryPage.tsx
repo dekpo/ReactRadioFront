@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Library, Pause, Play } from 'lucide-react'
+import { Heart, Library, Pause, Play } from 'lucide-react'
 import { FcGoogle } from 'react-icons/fc'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { useAuthStore } from '../auth/authStore'
@@ -19,8 +19,12 @@ function toOndemandTrack(like: Like): OndemandTrack {
 export function LibraryPage() {
   const { user, isBootstrapping, openConsentModal, logout, deleteAccount } =
     useAuthStore()
-  const { likes, isLoading, hasLoaded, fetchLikes } = useLikesStore()
+  const { likes, isLoading, hasLoaded, fetchLikes, toggleLike } = useLikesStore()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  // Track pending unlike, to confirm before removing a track from the
+  // library — liked tracks are only ever (re)discoverable by listening to
+  // the live stream again, so an accidental unlike would be costly.
+  const [unlikeTarget, setUnlikeTarget] = useState<Like | null>(null)
   const { mode, currentOndemandTrack, isPlaying, playOndemand, togglePlay } =
     usePlayerStore()
 
@@ -110,6 +114,14 @@ export function LibraryPage() {
                   </div>
                   <button
                     type="button"
+                    onClick={() => setUnlikeTarget(like)}
+                    aria-label="Retirer des favoris"
+                    className="flex-shrink-0 text-red-500 transition hover:text-red-400"
+                  >
+                    <Heart size={18} fill="currentColor" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() =>
                       isCurrent
                         ? togglePlay()
@@ -142,6 +154,19 @@ export function LibraryPage() {
           }}
           onCancel={() => setIsDeleteDialogOpen(false)}
         />
+
+        <ConfirmDialog
+          open={unlikeTarget !== null}
+          title="Retirer ce morceau de tes favoris ?"
+          description={`« ${unlikeTarget?.track_title ?? 'Ce morceau'} » sera retiré de ta bibliothèque. Tu ne pourras le retrouver qu'en le likant à nouveau depuis le direct.`}
+          confirmLabel="Retirer"
+          destructive
+          onConfirm={() => {
+            if (unlikeTarget) toggleLike({ file_id: unlikeTarget.file_id })
+            setUnlikeTarget(null)
+          }}
+          onCancel={() => setUnlikeTarget(null)}
+        />
       </div>
     )
   }
@@ -149,10 +174,10 @@ export function LibraryPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 py-16 text-center">
       <Library size={48} className="text-neutral-500" />
-      <h1 className="text-xl font-semibold">Bientôt disponible</h1>
+      <h1 className="text-xl font-semibold">Ta bibliothèque</h1>
       <p className="max-w-sm text-sm text-neutral-400">
-        Connecte-toi pour retrouver tes morceaux likés. <br />Cette fonctionnalité
-        arrive dans une prochaine mise à jour.
+        Connecte-toi pour retrouver tes morceaux likés et les écouter à la
+        demande, en dehors du direct.
       </p>
       <button
         type="button"

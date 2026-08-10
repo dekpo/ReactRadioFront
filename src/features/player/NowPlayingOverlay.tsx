@@ -4,11 +4,22 @@ import {
   useDragControls,
   type PanInfo,
 } from 'framer-motion'
-import { ChevronDown, Loader2, Pause, Play, Radio, SkipBack, SkipForward } from 'lucide-react'
+import {
+  ChevronDown,
+  Loader2,
+  Pause,
+  Play,
+  Radio,
+  Repeat,
+  Repeat1,
+  SkipBack,
+  SkipForward,
+} from 'lucide-react'
 import { ConnectionBanner } from './ConnectionBanner'
 import { LikeButton } from '../likes/LikeButton'
 import { useLiveInfo } from './useLiveInfo'
 import { usePlayerStore } from './playerStore'
+import { formatDuration } from './formatDuration'
 
 // How far (px) or how fast (px/s) a downward drag needs to go before it
 // counts as "swipe to dismiss" rather than a tap/scroll — mirrors the
@@ -29,6 +40,11 @@ export function NowPlayingOverlay() {
     ondemandNext,
     ondemandPrevious,
     returnToLive,
+    currentTime,
+    duration,
+    requestSeek,
+    repeatMode,
+    cycleRepeatMode,
   } = usePlayerStore()
   const { data } = useLiveInfo()
   const isOndemand = mode === 'ondemand'
@@ -127,6 +143,27 @@ export function NowPlayingOverlay() {
                 )}
               </div>
 
+              {/* Seek bar: on-demand only — a live stream has no meaningful
+                  position/duration to scrub through. */}
+              {isOndemand && !isPlayingTransitionJingle && (
+                <div className="mt-6">
+                  <input
+                    type="range"
+                    min={0}
+                    max={duration || 0}
+                    step={0.1}
+                    value={currentTime}
+                    onChange={(e) => requestSeek(Number(e.target.value))}
+                    aria-label="Progression du morceau"
+                    className="w-full cursor-pointer accent-white"
+                  />
+                  <div className="mt-1 flex justify-between text-xs text-neutral-400">
+                    <span>{formatDuration(currentTime)}</span>
+                    <span>{formatDuration(duration)}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Previous/next only make sense for an on-demand queue: on
                   the live stream there's nothing to navigate to. */}
               <div className="mt-8 flex items-center justify-center gap-8">
@@ -165,6 +202,27 @@ export function NowPlayingOverlay() {
                     className="text-white/80 transition hover:text-white"
                   >
                     <SkipForward size={26} />
+                  </button>
+                )}
+
+                {/* 3-state cycle (Spotify-style): off -> repeat queue ->
+                    repeat track -> off. On-demand only. */}
+                {isOndemand && !isPlayingTransitionJingle && (
+                  <button
+                    type="button"
+                    onClick={cycleRepeatMode}
+                    aria-label={
+                      repeatMode === 'off'
+                        ? 'Activer la répétition de la playlist'
+                        : repeatMode === 'queue'
+                          ? 'Activer la répétition du morceau'
+                          : 'Désactiver la répétition'
+                    }
+                    className={`transition hover:text-white ${
+                      repeatMode === 'off' ? 'text-white/50' : 'text-red-500'
+                    }`}
+                  >
+                    {repeatMode === 'track' ? <Repeat1 size={20} /> : <Repeat size={20} />}
                   </button>
                 )}
               </div>

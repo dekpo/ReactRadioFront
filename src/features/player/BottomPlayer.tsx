@@ -46,6 +46,10 @@ export function BottomPlayer() {
     ondemandNext,
     ondemandPrevious,
     returnToLive,
+    currentTime,
+    duration,
+    seekTo,
+    requestSeek,
   } = usePlayerStore()
 
   const { data } = useLiveInfo()
@@ -213,9 +217,27 @@ export function BottomPlayer() {
       if (store.mode !== 'ondemand') return
       if (store.isPlayingTransitionJingle) {
         store.returnToLive()
-      } else {
-        store.ondemandNext()
+        return
       }
+      if (store.repeatMode === 'track') {
+        // Replay the same track directly (not via ondemandNext, which is
+        // also used for manual "skip" and should always move forward).
+        audio.currentTime = 0
+        audio.play().catch(() => {})
+        return
+      }
+      store.ondemandNext()
+    }
+    // Seek bar support (on-demand only — a live stream's position/duration
+    // aren't meaningful). `duration` can briefly be `Infinity`/`NaN` right
+    // after `src` changes, before metadata has loaded.
+    const handleTimeUpdate = () => {
+      const store = usePlayerStore.getState()
+      if (store.mode !== 'ondemand') return
+      store.setPlaybackProgress(
+        audio.currentTime,
+        Number.isFinite(audio.duration) ? audio.duration : 0,
+      )
     }
 
     audio.addEventListener('playing', handlePlaying)
@@ -223,16 +245,29 @@ export function BottomPlayer() {
     audio.addEventListener('error', handleError)
     audio.addEventListener('pause', handlePause)
     audio.addEventListener('ended', handleEnded)
+    audio.addEventListener('timeupdate', handleTimeUpdate)
+    audio.addEventListener('loadedmetadata', handleTimeUpdate)
     return () => {
       audio.removeEventListener('playing', handlePlaying)
       audio.removeEventListener('waiting', handleWaiting)
       audio.removeEventListener('error', handleError)
       audio.removeEventListener('pause', handlePause)
       audio.removeEventListener('ended', handleEnded)
+      audio.removeEventListener('timeupdate', handleTimeUpdate)
+      audio.removeEventListener('loadedmetadata', handleTimeUpdate)
       clearReconnectTimers()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Applies a pending seek request (from this bar's own progress input, or
+  // from NowPlayingOverlay's) to the actual <audio> element, then clears it.
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio || seekTo === null) return
+    audio.currentTime = seekTo
+    usePlayerStore.getState().clearSeekRequest()
+  }, [seekTo])
 
   useEffect(() => {
     const store = usePlayerStore.getState()
@@ -376,30 +411,59 @@ export function BottomPlayer() {
           used elsewhere (home hero, overlay artwork placeholder). */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-red-500/60 via-red-500/20 to-transparent" />
 
+      {/* On-demand progress bar: always visible as a thin indicator, but
+          only draggable to seek on desktop (sm+) — on mobile the collapsed
+          bar isn't meant to carry that interaction, see the fullscreen
+          overlay for seeking on small screens. */}
+      {isOndemand && !isPlayingTransitionJingle && (
+        <div className="absolute inset-x-0 bottom-0 h-1 bg-white/10">
+          <div
+            className="pointer-events-none h-full bg-red-500"
+            style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : '0%' }}
+          />
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.1}
+            value={currentTime}
+            onChange={(e) => requestSeek(Number(e.target.value))}
+            aria-label="Progression du morceau"
+            className="absolute inset-0 hidden w-full cursor-pointer opacity-0 sm:block"
+          />
+        </div>
+      )}
+
       <audio ref={audioRef} preload="none" />
 
-      <button
-        type="button"
-        onClick={expand}
-        aria-label="Open now playing"
-        className="flex min-w-0 flex-1 items-center gap-3 text-left sm:flex-none"
-      >
-        {artwork ? (
-          <img
-            src={artwork}
-            alt=""
-            className="h-12 w-12 flex-shrink-0 rounded object-cover"
-          />
-        ) : (
-          <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-800" />
-        )}
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{title}</p>
-          <p className="truncate text-xs text-neutral-400">{artist}</p>
-        </div>
-      </button>
+      {/* Track info + like button grouped together on the left, so the
+          heart stays pinned right next to the title instead of floating
+          mid-bar (the outer container's justify-between spreads its direct
+          children evenly across the full width). */}
+      <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
+        <button
+          type="button"
+          onClick={expand}
+          aria-label="Open now playing"
+          className="flex min-w-0 items-center gap-3 text-left"
+        >
+          {artwork ? (
+            <img
+              src={artwork}
+              alt=""
+              className="h-12 w-12 flex-shrink-0 rounded object-cover"
+            />
+          ) : (
+            <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-800" />
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{title}</p>
+            <p className="truncate text-xs text-neutral-400">{artist}</p>
+          </div>
+        </button>
 
-      {!isOndemand && <LikeButton track={liveTrack} size={18} className="flex-shrink-0" />}
+        {!isOndemand && <LikeButton track={liveTrack} size={18} className="flex-shrink-0" />}
+      </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
         {isOndemand && !isPlayingTransitionJingle && (

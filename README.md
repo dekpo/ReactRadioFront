@@ -75,6 +75,33 @@ the existing nginx, see [Deployment](#deployment) below).
       on-demand (the track is definitionally already liked); persisted
       drag-and-drop reordering of the liked-tracks list is a separate,
       future piece of work (would need a backend migration).
+- [x] **On-demand playback polish** (2026-08-10, after real-conditions
+      testing): unlike button restored in the Library list (heart, left of
+      the play button), now behind a confirmation dialog since a liked
+      track can only be rediscovered by listening to the live stream again;
+      seek bar with scrubbing for on-demand playback (full bar + time
+      labels in the fullscreen overlay; a thinner, desktop-only draggable
+      progress line in the collapsed bottom player — deliberately not
+      draggable on mobile, where the overlay is the place to seek); default
+      volume raised to 100% (no in-app volume control exists on mobile, by
+      design — see the dev rule below — so starting below max made the
+      stream needlessly quieter than a competing app at the same hardware
+      volume); fixed a pre-existing (since 2026-08-08) desktop layout quirk
+      where the like heart in `BottomPlayer` floated mid-bar instead of
+      sitting next to the track title.
+- [x] **Repeat mode** (2026-08-10): Spotify-style 3-state cycle button in
+      the fullscreen overlay (right of "next", on-demand only) — off ->
+      repeat queue -> repeat track -> off. Repeat-track replays the
+      current track directly on natural end (not via the shared "next"
+      action, which is also used for manual skip and must always move
+      forward even with repeat-track on). Repeat-queue loops back to the
+      first track at the end of the queue **without** playing the
+      transition jingle (that's reserved for the natural, non-repeating
+      end of a listening session).
+- [ ] **Deferred to a future session**: persisted drag-and-drop reordering
+      of the liked-tracks queue; shuffle mode (interaction with repeat/
+      remaining-count UX needs more thought first — see
+      `AI-Context/journal/2026-08-10.md`).
 
 See `backend/README.md` in
 [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend) for the
