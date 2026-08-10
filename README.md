@@ -115,13 +115,13 @@ the existing nginx, see [Deployment](#deployment) below).
       natural queue order without changing the current track. Also fixes
       the play button visually sitting off-center (5 symmetric controls:
       shuffle / prev / play / next / repeat). No remaining-count UI
-      (matches Spotify). Not yet deployed.
+      (matches Spotify). Deployed 2026-08-10 (`index-CHhRxixG.js`).
 - [x] **Library drag-and-drop reorder** (2026-08-10, same branch):
       `@dnd-kit` grip handle left of artwork; optimistic reorder via
       `PATCH /likes/reorder`; new likes stay at the top. While on-demand
       playback is active, `syncOndemandQueue` keeps the current track and
       rebuilds upcoming order (and reshuffles `playOrder` if shuffle is
-      on). Not yet deployed.
+      on). Deployed 2026-08-10 with backend `497058c`.
 
 See `backend/README.md` in
 [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend) for the
