@@ -12,6 +12,22 @@ export interface OndemandTrack {
   artworkUrl: string | null
 }
 
+function identityOrder(length: number): number[] {
+  return Array.from({ length }, (_, i) => i)
+}
+
+/** Fisher–Yates shuffle; does not mutate the input. */
+function shuffledCopy(indices: number[]): number[] {
+  const result = [...indices]
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const tmp = result[i]!
+    result[i] = result[j]!
+    result[j] = tmp
+  }
+  return result
+}
+
 interface PlayerState {
   mode: PlayerMode
   isPlaying: boolean
@@ -28,8 +44,11 @@ interface PlayerState {
   isExpanded: boolean
 
   // On-demand playback of a user's liked tracks (mode === 'ondemand' only).
-  // `queue`/`queueIndex` are a snapshot taken when playback starts, so
-  // prev/next keep working even if the underlying likes list changes.
+  // `queue` is the natural order (library order at launch / last sync).
+  // `queueIndex` is the position in the *effective* play order: when
+  // shuffle is off that is an index into `queue`; when shuffle is on it
+  // indexes into `playOrder`, and the natural track index is
+  // `playOrder[queueIndex]`.
   queue: OndemandTrack[]
   queueIndex: number
   currentOndemandTrack: OndemandTrack | null
@@ -37,6 +56,10 @@ interface PlayerState {
   // after the last track of the queue finishes — see PROMPT.md.
   isPlayingTransitionJingle: boolean
   repeatMode: RepeatMode
+  // Independent of `repeatMode` (Spotify-style). When true, `playOrder` is
+  // a permutation of queue indices; toggled via `toggleShuffle`.
+  isShuffled: boolean
+  playOrder: number[]
 
   // Seek bar support, on-demand playback only (a live stream has no
   // meaningful duration/position). `currentTime`/`duration` are updated by
@@ -62,10 +85,26 @@ interface PlayerState {
   ondemandPrevious: () => void
   returnToLive: () => void
   cycleRepeatMode: () => void
+  toggleShuffle: () => void
 
   setPlaybackProgress: (currentTime: number, duration: number) => void
   requestSeek: (time: number) => void
   clearSeekRequest: () => void
+}
+
+function effectiveOrder(queueLength: number, isShuffled: boolean, playOrder: number[]): number[] {
+  if (isShuffled && playOrder.length === queueLength) return playOrder
+  return identityOrder(queueLength)
+}
+
+function naturalIndexAt(
+  queueIndex: number,
+  queueLength: number,
+  isShuffled: boolean,
+  playOrder: number[],
+): number {
+  const order = effectiveOrder(queueLength, isShuffled, playOrder)
+  return order[queueIndex] ?? queueIndex
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -86,6 +125,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentOndemandTrack: null,
   isPlayingTransitionJingle: false,
   repeatMode: 'off',
+  isShuffled: false,
+  playOrder: [],
   currentTime: 0,
   duration: 0,
   seekTo: null,
@@ -108,6 +149,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       queueIndex: index,
       currentOndemandTrack: track,
       isPlayingTransitionJingle: false,
+      isShuffled: false,
+      playOrder: [],
       isPlaying: true,
       streamError: false,
       currentTime: 0,
@@ -122,12 +165,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   // should always move forward regardless of track-repeat being on
   // (matches Spotify: repeat-track only loops on natural end, not on skip).
   ondemandNext: () => {
-    const { queue, queueIndex, repeatMode } = get()
+    const { queue, queueIndex, repeatMode, isShuffled, playOrder } = get()
+    const order = effectiveOrder(queue.length, isShuffled, playOrder)
     const nextIndex = queueIndex + 1
-    if (nextIndex < queue.length) {
+    if (nextIndex < order.length) {
+      const natural = order[nextIndex]!
       set({
         queueIndex: nextIndex,
-        currentOndemandTrack: queue[nextIndex],
+        currentOndemandTrack: queue[natural]!,
         isPlayingTransitionJingle: false,
         isPlaying: true,
         currentTime: 0,
@@ -137,9 +182,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // Explicit, intentional loop: go straight back to the first track,
       // no transition jingle (that's reserved for the natural end of a
       // one-off listening session, not a deliberate repeat).
+      const natural = order[0]!
       set({
         queueIndex: 0,
-        currentOndemandTrack: queue[0],
+        currentOndemandTrack: queue[natural]!,
         isPlayingTransitionJingle: false,
         isPlaying: true,
         currentTime: 0,
@@ -153,16 +199,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   ondemandPrevious: () => {
-    const { queue, queueIndex, isPlayingTransitionJingle } = get()
+    const { queue, queueIndex, isPlayingTransitionJingle, isShuffled, playOrder } = get()
     if (queue.length === 0) return
+    const order = effectiveOrder(queue.length, isShuffled, playOrder)
     // Stepping back out of the transition jingle re-plays the last track
     // instead of doing nothing.
     const previousIndex = isPlayingTransitionJingle
-      ? queue.length - 1
+      ? order.length - 1
       : Math.max(queueIndex - 1, 0)
+    const natural = order[previousIndex]!
     set({
       queueIndex: previousIndex,
-      currentOndemandTrack: queue[previousIndex],
+      currentOndemandTrack: queue[natural]!,
       isPlayingTransitionJingle: false,
       isPlaying: true,
       currentTime: 0,
@@ -177,6 +225,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       queueIndex: -1,
       currentOndemandTrack: null,
       isPlayingTransitionJingle: false,
+      isShuffled: false,
+      playOrder: [],
       isPlaying: true,
       streamError: false,
       currentTime: 0,
@@ -188,6 +238,34 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       repeatMode:
         get().repeatMode === 'off' ? 'queue' : get().repeatMode === 'queue' ? 'track' : 'off',
     }),
+
+  // Spotify-style: independent of repeat. Each activation re-shuffles the
+  // full queue; the currently playing track stays put (its position in the
+  // new permutation becomes the new queueIndex). Deactivating restores
+  // natural order without changing the current track.
+  toggleShuffle: () => {
+    const { queue, queueIndex, isShuffled, playOrder, mode } = get()
+    if (mode !== 'ondemand' || queue.length === 0) return
+
+    const currentNatural = naturalIndexAt(queueIndex, queue.length, isShuffled, playOrder)
+
+    if (!isShuffled) {
+      const newOrder = shuffledCopy(identityOrder(queue.length))
+      const newPos = newOrder.indexOf(currentNatural)
+      set({
+        isShuffled: true,
+        playOrder: newOrder,
+        queueIndex: newPos === -1 ? 0 : newPos,
+      })
+      return
+    }
+
+    set({
+      isShuffled: false,
+      playOrder: [],
+      queueIndex: currentNatural,
+    })
+  },
 
   setPlaybackProgress: (currentTime, duration) => set({ currentTime, duration }),
   requestSeek: (time) => set({ seekTo: time }),

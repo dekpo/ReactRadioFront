@@ -12,6 +12,7 @@ import {
   Radio,
   Repeat,
   Repeat1,
+  Shuffle,
   SkipBack,
   SkipForward,
 } from 'lucide-react'
@@ -45,6 +46,8 @@ export function NowPlayingOverlay() {
     requestSeek,
     repeatMode,
     cycleRepeatMode,
+    isShuffled,
+    toggleShuffle,
   } = usePlayerStore()
   const { data } = useLiveInfo()
   const isOndemand = mode === 'ondemand'
@@ -168,9 +171,28 @@ export function NowPlayingOverlay() {
                 </div>
               )}
 
-              {/* Previous/next only make sense for an on-demand queue: on
-                  the live stream there's nothing to navigate to. */}
+              {/* On-demand controls: [shuffle] [prev] [play] [next] [repeat]
+                  — 5 symmetric controls so play sits on the true center
+                  (the previous 4-button row left play visually off-center).
+                  Live mode keeps a lone centered play button. */}
               <div className="mt-5 flex items-center justify-center gap-8 sm:mt-8">
+                {isOndemand && !isPlayingTransitionJingle && (
+                  <button
+                    type="button"
+                    onClick={toggleShuffle}
+                    aria-label={
+                      isShuffled
+                        ? 'Désactiver la lecture aléatoire'
+                        : 'Activer la lecture aléatoire'
+                    }
+                    className={`transition hover:text-white ${
+                      isShuffled ? 'text-red-500' : 'text-white/50'
+                    }`}
+                  >
+                    <Shuffle size={20} />
+                  </button>
+                )}
+
                 {isOndemand && !isPlayingTransitionJingle && (
                   <button
                     type="button"

@@ -107,14 +107,20 @@ the existing nginx, see [Deployment](#deployment) below).
       `min(22rem, 42vh)`) so "Revenir au direct" is reachable without
       scrolling on short phone screens, which the on-demand seek bar had
       pushed below the fold.
-- [ ] **Deferred to a future session**: persisted drag-and-drop reordering
-      of the liked-tracks queue; shuffle mode (interaction with repeat/
-      remaining-count UX needs more thought first) — **also needs to fix,
-      without a workaround, the play button being visually off-center in
-      the on-demand controls row** (adding the shuffle button
-      symmetrically to the left of "previous" is the intended fix). See
-      `AI-Context/handoff-phase2-shuffle-dragdrop/PROMPT.md` (ready-to-use
-      prompt for that session) and `AI-Context/journal/2026-08-10.md`.
+- [x] **Shuffle mode** (2026-08-10, evening, on branch
+      `feature/shuffle-dragdrop`): Spotify-style toggle in the fullscreen
+      overlay to the left of "previous" (on-demand only), independent of
+      `repeatMode`. Each activation re-shuffles a `playOrder` permutation
+      while keeping the current track playing; deactivating restores
+      natural queue order without changing the current track. Also fixes
+      the play button visually sitting off-center (5 symmetric controls:
+      shuffle / prev / play / next / repeat). No remaining-count UI
+      (matches Spotify). Not yet deployed.
+- [ ] **Deferred (same branch, next)**: persisted drag-and-drop reordering
+      of the liked-tracks queue (needs a backend `position` column +
+      reorder endpoint). See
+      `AI-Context/handoff-phase2-shuffle-dragdrop/PROMPT.md` and
+      `AI-Context/journal/2026-08-10.md`.
 
 See `backend/README.md` in
 [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend) for the
