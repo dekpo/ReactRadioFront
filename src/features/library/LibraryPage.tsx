@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type PointerEvent, type TouchEvent } from 'react'
 import {
   DndContext,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -55,28 +56,35 @@ function SortableLikeRow({
     transition,
   }
 
+  // Interactive controls must not start a drag (listeners live on the row).
+  const stopRowDrag = (event: PointerEvent | TouchEvent) => {
+    event.stopPropagation()
+  }
+
   return (
     <li
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 rounded-lg p-3 transition ${
+      // Drag target = whole row. Kill text selection / iOS callout so a
+      // long-press to reorder never opens copy/translate on the title.
+      className={`flex cursor-grab items-center gap-3 rounded-lg p-3 select-none transition [-webkit-touch-callout:none] active:cursor-grabbing ${
         isCurrent ? 'bg-red-500/10' : 'bg-neutral-800/50'
       } ${isDragging ? 'relative z-10 opacity-90 shadow-lg ring-1 ring-white/10' : ''}`}
+      {...attributes}
+      {...listeners}
     >
-      <button
-        type="button"
-        aria-label="Réorganiser"
-        className="flex-shrink-0 cursor-grab touch-none text-neutral-500 transition hover:text-neutral-300 active:cursor-grabbing"
-        {...attributes}
-        {...listeners}
+      <span
+        aria-hidden
+        className="flex-shrink-0 text-neutral-500"
       >
         <GripVertical size={18} />
-      </button>
+      </span>
       {like.artwork_url ? (
         <img
           src={like.artwork_url}
           alt=""
-          className="h-12 w-12 flex-shrink-0 rounded object-cover"
+          draggable={false}
+          className="pointer-events-none h-12 w-12 flex-shrink-0 rounded object-cover"
         />
       ) : (
         <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-700" />
@@ -93,17 +101,21 @@ function SortableLikeRow({
       </div>
       <button
         type="button"
+        onPointerDown={stopRowDrag}
+        onTouchStart={stopRowDrag}
         onClick={() => onUnlike(like)}
         aria-label="Retirer des favoris"
-        className="flex-shrink-0 text-red-500 transition hover:text-red-400"
+        className="flex-shrink-0 cursor-pointer text-red-500 transition hover:text-red-400"
       >
         <Heart size={18} fill="currentColor" />
       </button>
       <button
         type="button"
+        onPointerDown={stopRowDrag}
+        onTouchStart={stopRowDrag}
         onClick={() => onPlayToggle(like, index, isCurrent)}
         aria-label={isCurrent && isPlaying ? 'Pause' : 'Lire'}
-        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
+        className="flex h-9 w-9 flex-shrink-0 cursor-pointer items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
       >
         {isCurrent && isPlaying ? <Pause size={16} /> : <Play size={16} />}
       </button>
@@ -124,10 +136,13 @@ export function LibraryPage() {
   const { mode, currentOndemandTrack, isPlaying, playOndemand, togglePlay } =
     usePlayerStore()
 
-  // Require a small pointer movement before drag starts so taps on the
-  // grip (and nearby controls) still count as clicks.
+  // Mouse: small movement activates drag. Touch: short press-delay so the
+  // list still scrolls, and so iOS doesn't treat the gesture as text select.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 8 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
