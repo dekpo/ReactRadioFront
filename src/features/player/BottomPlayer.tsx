@@ -436,34 +436,28 @@ export function BottomPlayer() {
 
       <audio ref={audioRef} preload="none" />
 
-      {/* Track info + like button grouped together on the left, so the
-          heart stays pinned right next to the title instead of floating
-          mid-bar (the outer container's justify-between spreads its direct
-          children evenly across the full width). */}
-      <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
-        <button
-          type="button"
-          onClick={expand}
-          aria-label="Open now playing"
-          className="flex min-w-0 items-center gap-3 text-left"
-        >
-          {artwork ? (
-            <img
-              src={artwork}
-              alt=""
-              className="h-12 w-12 flex-shrink-0 rounded object-cover"
-            />
-          ) : (
-            <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-800" />
-          )}
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{title}</p>
-            <p className="truncate text-xs text-neutral-400">{artist}</p>
-          </div>
-        </button>
-
-        {!isOndemand && <LikeButton track={liveTrack} size={18} className="flex-shrink-0" />}
-      </div>
+      {/* Track info: left-aligned, on its own (the heart now lives next to
+          the play button on the right — see below). */}
+      <button
+        type="button"
+        onClick={expand}
+        aria-label="Open now playing"
+        className="flex min-w-0 flex-1 items-center gap-3 text-left sm:flex-none"
+      >
+        {artwork ? (
+          <img
+            src={artwork}
+            alt=""
+            className="h-12 w-12 flex-shrink-0 rounded object-cover"
+          />
+        ) : (
+          <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-800" />
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{title}</p>
+          <p className="truncate text-xs text-neutral-400">{artist}</p>
+        </div>
+      </button>
 
       <div className="flex items-center gap-2 sm:gap-4">
         {isOndemand && !isPlayingTransitionJingle && (
@@ -476,6 +470,10 @@ export function BottomPlayer() {
             <SkipBack size={18} />
           </button>
         )}
+
+        {/* Heart sits immediately to the left of play/pause, on the right
+            side of the bar — not next to the track title. */}
+        {!isOndemand && <LikeButton track={liveTrack} size={18} className="flex-shrink-0" />}
 
         <button
           type="button"

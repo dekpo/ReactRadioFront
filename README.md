@@ -98,10 +98,23 @@ the existing nginx, see [Deployment](#deployment) below).
       first track at the end of the queue **without** playing the
       transition jingle (that's reserved for the natural, non-repeating
       end of a listening session).
+- [x] **Further UI polish (2026-08-10, evening, requested explicitly by
+      the user per `.cursor/rules/design-change-approval.mdc`), built and
+      passing lint/build but not yet deployed**: heart moved again in
+      `BottomPlayer` (now right next to play/pause on the right side,
+      no longer next to the track title); `NowPlayingOverlay`'s vertical
+      spacing reduced on mobile (and its central column capped at
+      `min(22rem, 42vh)`) so "Revenir au direct" is reachable without
+      scrolling on short phone screens, which the on-demand seek bar had
+      pushed below the fold.
 - [ ] **Deferred to a future session**: persisted drag-and-drop reordering
       of the liked-tracks queue; shuffle mode (interaction with repeat/
-      remaining-count UX needs more thought first — see
-      `AI-Context/journal/2026-08-10.md`).
+      remaining-count UX needs more thought first) — **also needs to fix,
+      without a workaround, the play button being visually off-center in
+      the on-demand controls row** (adding the shuffle button
+      symmetrically to the left of "previous" is the intended fix). See
+      `AI-Context/handoff-phase2-shuffle-dragdrop/PROMPT.md` (ready-to-use
+      prompt for that session) and `AI-Context/journal/2026-08-10.md`.
 
 See `backend/README.md` in
 [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend) for the

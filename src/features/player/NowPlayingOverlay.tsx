@@ -117,8 +117,12 @@ export function NowPlayingOverlay() {
             </div>
           </div>
 
-          <div className="relative flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-4">
-            <div className="w-full max-w-sm">
+          <div className="relative flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-2 sm:py-4">
+            {/* Capped by viewport height (not just width) so every row below
+                — notably the seek bar — still fits above the fold on short
+                mobile screens without needing to scroll to reach "Revenir au
+                direct". */}
+            <div className="w-full max-w-[min(22rem,42vh)]">
               <div className="aspect-square w-full overflow-hidden rounded-lg bg-neutral-800 shadow-2xl">
                 {artwork ? (
                   <img src={artwork} alt="" className="h-full w-full object-cover" />
@@ -131,7 +135,7 @@ export function NowPlayingOverlay() {
                   pinned to the right on the same row — rather than
                   everything centered, which reads as less polished and
                   leaves the like button oddly floating next to the text. */}
-              <div className="mt-6 flex items-center justify-between gap-4">
+              <div className="mt-4 flex items-center justify-between gap-4 sm:mt-6">
                 <div className="min-w-0">
                   <p className="truncate text-xl font-bold sm:text-2xl">{title}</p>
                   <p className="mt-1 truncate text-sm text-neutral-300">{artist}</p>
@@ -146,7 +150,7 @@ export function NowPlayingOverlay() {
               {/* Seek bar: on-demand only — a live stream has no meaningful
                   position/duration to scrub through. */}
               {isOndemand && !isPlayingTransitionJingle && (
-                <div className="mt-6">
+                <div className="mt-3 sm:mt-6">
                   <input
                     type="range"
                     min={0}
@@ -166,7 +170,7 @@ export function NowPlayingOverlay() {
 
               {/* Previous/next only make sense for an on-demand queue: on
                   the live stream there's nothing to navigate to. */}
-              <div className="mt-8 flex items-center justify-center gap-8">
+              <div className="mt-5 flex items-center justify-center gap-8 sm:mt-8">
                 {isOndemand && !isPlayingTransitionJingle && (
                   <button
                     type="button"
@@ -227,7 +231,7 @@ export function NowPlayingOverlay() {
                 )}
               </div>
 
-              <div className="mt-6 flex justify-center">
+              <div className="mt-4 flex justify-center sm:mt-6">
                 {isOndemand ? (
                   <button
                     type="button"
@@ -249,7 +253,7 @@ export function NowPlayingOverlay() {
               content above) so it's never clipped when the centered stack
               is taller than the viewport — see the mobile "Pas de connexion"
               truncation bug reported by the user. */}
-          <div className="relative w-full shrink-0 px-4 pb-6">
+          <div className="relative w-full shrink-0 px-4 pb-3 sm:pb-6">
             <div className="mx-auto w-full max-w-sm overflow-hidden rounded-lg">
               <ConnectionBanner />
             </div>
