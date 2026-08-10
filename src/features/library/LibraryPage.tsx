@@ -1,25 +1,121 @@
 import { useEffect, useState } from 'react'
-import { Heart, Library, Pause, Play } from 'lucide-react'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical, Heart, Library, Pause, Play } from 'lucide-react'
 import { FcGoogle } from 'react-icons/fc'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { useAuthStore } from '../auth/authStore'
-import { useLikesStore } from '../likes/likesStore'
-import { type OndemandTrack, usePlayerStore } from '../player/playerStore'
+import { toOndemandTrack, useLikesStore } from '../likes/likesStore'
+import { usePlayerStore } from '../player/playerStore'
 import type { Like } from '../../lib/backendApi'
 
-function toOndemandTrack(like: Like): OndemandTrack {
-  return {
-    fileId: like.file_id,
-    title: like.track_title ?? 'Titre inconnu',
-    artist: like.artist_name ?? 'Artiste inconnu',
-    artworkUrl: like.artwork_url,
+interface SortableLikeRowProps {
+  like: Like
+  index: number
+  isCurrent: boolean
+  isPlaying: boolean
+  onUnlike: (like: Like) => void
+  onPlayToggle: (like: Like, index: number, isCurrent: boolean) => void
+}
+
+function SortableLikeRow({
+  like,
+  index,
+  isCurrent,
+  isPlaying,
+  onUnlike,
+  onPlayToggle,
+}: SortableLikeRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: like.file_id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
   }
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 rounded-lg p-3 transition ${
+        isCurrent ? 'bg-red-500/10' : 'bg-neutral-800/50'
+      } ${isDragging ? 'relative z-10 opacity-90 shadow-lg ring-1 ring-white/10' : ''}`}
+    >
+      <button
+        type="button"
+        aria-label="Réorganiser"
+        className="flex-shrink-0 cursor-grab touch-none text-neutral-500 transition hover:text-neutral-300 active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical size={18} />
+      </button>
+      {like.artwork_url ? (
+        <img
+          src={like.artwork_url}
+          alt=""
+          className="h-12 w-12 flex-shrink-0 rounded object-cover"
+        />
+      ) : (
+        <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-700" />
+      )}
+      <div className="min-w-0 flex-1">
+        <p
+          className={`truncate text-sm font-medium ${isCurrent ? 'text-red-400' : ''}`}
+        >
+          {like.track_title ?? 'Titre inconnu'}
+        </p>
+        <p className="truncate text-xs text-neutral-400">
+          {like.artist_name ?? 'Artiste inconnu'}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onUnlike(like)}
+        aria-label="Retirer des favoris"
+        className="flex-shrink-0 text-red-500 transition hover:text-red-400"
+      >
+        <Heart size={18} fill="currentColor" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onPlayToggle(like, index, isCurrent)}
+        aria-label={isCurrent && isPlaying ? 'Pause' : 'Lire'}
+        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
+      >
+        {isCurrent && isPlaying ? <Pause size={16} /> : <Play size={16} />}
+      </button>
+    </li>
+  )
 }
 
 export function LibraryPage() {
   const { user, isBootstrapping, openConsentModal, logout, deleteAccount } =
     useAuthStore()
-  const { likes, isLoading, hasLoaded, fetchLikes, toggleLike } = useLikesStore()
+  const { likes, isLoading, hasLoaded, fetchLikes, toggleLike, reorderLikes } =
+    useLikesStore()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   // Track pending unlike, to confirm before removing a track from the
   // library — liked tracks are only ever (re)discoverable by listening to
@@ -28,9 +124,30 @@ export function LibraryPage() {
   const { mode, currentOndemandTrack, isPlaying, playOndemand, togglePlay } =
     usePlayerStore()
 
+  // Require a small pointer movement before drag starts so taps on the
+  // grip (and nearby controls) still count as clicks.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
   useEffect(() => {
     if (user && !hasLoaded) fetchLikes()
   }, [user, hasLoaded, fetchLikes])
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = likes.findIndex((like) => like.file_id === active.id)
+    const newIndex = likes.findIndex((like) => like.file_id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const reordered = arrayMove(likes, oldIndex, newIndex)
+    void reorderLikes(reordered.map((like) => like.file_id))
+  }
 
   if (isBootstrapping) {
     return null
@@ -82,64 +199,39 @@ export function LibraryPage() {
               lecteur pour le retrouver ici.
             </p>
           )}
-          <ul className="flex flex-col gap-2">
-            {likes.map((like, index) => {
-              const isCurrent =
-                mode === 'ondemand' && currentOndemandTrack?.fileId === like.file_id
-              return (
-                <li
-                  key={like.file_id}
-                  className={`flex items-center gap-3 rounded-lg p-3 transition ${
-                    isCurrent ? 'bg-red-500/10' : 'bg-neutral-800/50'
-                  }`}
-                >
-                  {like.artwork_url ? (
-                    <img
-                      src={like.artwork_url}
-                      alt=""
-                      className="h-12 w-12 flex-shrink-0 rounded object-cover"
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={likes.map((like) => like.file_id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <ul className="flex flex-col gap-2">
+                {likes.map((like, index) => {
+                  const isCurrent =
+                    mode === 'ondemand' &&
+                    currentOndemandTrack?.fileId === like.file_id
+                  return (
+                    <SortableLikeRow
+                      key={like.file_id}
+                      like={like}
+                      index={index}
+                      isCurrent={isCurrent}
+                      isPlaying={isPlaying}
+                      onUnlike={setUnlikeTarget}
+                      onPlayToggle={(_like, rowIndex, rowIsCurrent) =>
+                        rowIsCurrent
+                          ? togglePlay()
+                          : playOndemand(likes.map(toOndemandTrack), rowIndex)
+                      }
                     />
-                  ) : (
-                    <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-700" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={`truncate text-sm font-medium ${isCurrent ? 'text-red-400' : ''}`}
-                    >
-                      {like.track_title ?? 'Titre inconnu'}
-                    </p>
-                    <p className="truncate text-xs text-neutral-400">
-                      {like.artist_name ?? 'Artiste inconnu'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setUnlikeTarget(like)}
-                    aria-label="Retirer des favoris"
-                    className="flex-shrink-0 text-red-500 transition hover:text-red-400"
-                  >
-                    <Heart size={18} fill="currentColor" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      isCurrent
-                        ? togglePlay()
-                        : playOndemand(likes.map(toOndemandTrack), index)
-                    }
-                    aria-label={isCurrent && isPlaying ? 'Pause' : 'Lire'}
-                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
-                  >
-                    {isCurrent && isPlaying ? (
-                      <Pause size={16} />
-                    ) : (
-                      <Play size={16} />
-                    )}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
+                  )
+                })}
+              </ul>
+            </SortableContext>
+          </DndContext>
         </div>
 
         <ConfirmDialog

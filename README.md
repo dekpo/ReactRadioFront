@@ -116,11 +116,12 @@ the existing nginx, see [Deployment](#deployment) below).
       the play button visually sitting off-center (5 symmetric controls:
       shuffle / prev / play / next / repeat). No remaining-count UI
       (matches Spotify). Not yet deployed.
-- [ ] **Deferred (same branch, next)**: persisted drag-and-drop reordering
-      of the liked-tracks queue (needs a backend `position` column +
-      reorder endpoint). See
-      `AI-Context/handoff-phase2-shuffle-dragdrop/PROMPT.md` and
-      `AI-Context/journal/2026-08-10.md`.
+- [x] **Library drag-and-drop reorder** (2026-08-10, same branch):
+      `@dnd-kit` grip handle left of artwork; optimistic reorder via
+      `PATCH /likes/reorder`; new likes stay at the top. While on-demand
+      playback is active, `syncOndemandQueue` keeps the current track and
+      rebuilds upcoming order (and reshuffles `playOrder` if shuffle is
+      on). Not yet deployed.
 
 See `backend/README.md` in
 [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend) for the

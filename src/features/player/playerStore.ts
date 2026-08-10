@@ -86,6 +86,11 @@ interface PlayerState {
   returnToLive: () => void
   cycleRepeatMode: () => void
   toggleShuffle: () => void
+  // Keep the current track playing while replacing `queue` with a new
+  // library order (after drag-and-drop or a new like at the top). When
+  // shuffled, rebuilds `playOrder` from the new order without changing
+  // the track currently playing.
+  syncOndemandQueue: (tracks: OndemandTrack[]) => void
 
   setPlaybackProgress: (currentTime: number, duration: number) => void
   requestSeek: (time: number) => void
@@ -264,6 +269,54 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       isShuffled: false,
       playOrder: [],
       queueIndex: currentNatural,
+    })
+  },
+
+  syncOndemandQueue: (tracks) => {
+    const {
+      mode,
+      currentOndemandTrack,
+      isShuffled,
+      isPlayingTransitionJingle,
+    } = get()
+    if (mode !== 'ondemand' || isPlayingTransitionJingle) return
+
+    if (!currentOndemandTrack) {
+      set({ queue: tracks, queueIndex: tracks.length ? 0 : -1, playOrder: [], isShuffled: false })
+      return
+    }
+
+    const newNaturalIndex = tracks.findIndex(
+      (track) => track.fileId === currentOndemandTrack.fileId,
+    )
+
+    // Current track left the library (unliked): keep playing it, but the
+    // upcoming queue becomes the remaining likes; next skip starts at 0.
+    if (newNaturalIndex === -1) {
+      set({
+        queue: tracks,
+        queueIndex: -1,
+        playOrder: [],
+        isShuffled: false,
+      })
+      return
+    }
+
+    if (isShuffled && tracks.length > 0) {
+      const newOrder = shuffledCopy(identityOrder(tracks.length))
+      const newPos = newOrder.indexOf(newNaturalIndex)
+      set({
+        queue: tracks,
+        playOrder: newOrder,
+        queueIndex: newPos === -1 ? 0 : newPos,
+      })
+      return
+    }
+
+    set({
+      queue: tracks,
+      queueIndex: newNaturalIndex,
+      playOrder: [],
     })
   },
 

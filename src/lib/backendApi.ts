@@ -52,6 +52,7 @@ export interface Like {
   artist_name: string | null
   artwork_url: string | null
   liked_at: string
+  position: number
 }
 
 export const backendApi = {
@@ -73,6 +74,11 @@ export const backendApi = {
     request<Like>('/likes', { method: 'POST', body: JSON.stringify(payload) }),
   unlikeTrack: (fileId: number) =>
     request<void>(`/likes/${fileId}`, { method: 'DELETE' }),
+  reorderLikes: (fileIds: number[]) =>
+    request<Like[]>('/likes/reorder', {
+      method: 'PATCH',
+      body: JSON.stringify({ file_ids: fileIds }),
+    }),
 }
 
 // Used directly as an <audio src>, not fetched via `request` — the browser
