@@ -25,9 +25,10 @@ the existing nginx, see [Deployment](#deployment) below).
       the Media Session API (re-applied on every stream reconnect; live-info
       polling kept alive in the background via `refetchIntervalInBackground`
       so track changes still reach the lock screen while the phone is locked)
-- [x] Network resilience: automatic stream reconnection with backoff on
-      connection loss, explicit offline/error banners (important for a live
-      audio stream used on mobile/roaming)
+- [x] Network resilience: automatic reconnection with backoff on
+      connection loss, explicit offline/error banners — shared by the
+      **live stream and on-demand playlist** (unified 2026-08-26; see
+      Network resilience section below)
 - [x] Robust French text rendering: all dynamic text from the LibreTime API
       (track/artist/show names) is HTML-entity-decoded, so accents, cedillas
       and apostrophes always display correctly
@@ -62,19 +63,19 @@ the existing nginx, see [Deployment](#deployment) below).
       2): a "play" button on each item in the Library plays that liked
       track outside the live stream (`playerStore`'s new `'live' |
       'ondemand'` mode), reusing the same `<audio>` element as the live
-      stream — the live auto-reconnect logic is fully disabled while in
-      `ondemand` mode. Previous/next controls reappear, but only in
-      on-demand mode (queue = the liked tracks list at the moment playback
-      started). An explicit "Revenir au direct" button switches back to
-      live (no ambiguous close-to-resume-live behavior). At the end of the
-      queue, a random jingle plays as a transition before falling back to
-      live automatically (`GET /app-api/jingles/random/audio`, new
-      backend endpoint); any playback error (missing jingle/file) fails
-      safe by returning to live directly.
+      stream. Previous/next controls reappear, but only in on-demand mode
+      (queue = the liked tracks list at the moment playback started). An
+      explicit "Revenir au direct" button switches back to live (no
+      ambiguous close-to-resume-live behavior). At the end of the queue, a
+      random jingle plays as a transition before falling back to live
+      automatically (`GET /app-api/jingles/random/audio`).
+      **Network errors** (stall / offline / retries / red Retry banner)
+      now follow the **same policy as live** (unified 2026-08-26 on
+      branch `feature/unify-audio-error-handling`) — the player stays on
+      the playlist track and resumes it; only the transition jingle still
+      fails safe straight to live.
       **Known limitation, deferred**: no like/unlike button while playing
-      on-demand (the track is definitionally already liked); persisted
-      drag-and-drop reordering of the liked-tracks list is a separate,
-      future piece of work (would need a backend migration).
+      on-demand (the track is definitionally already liked).
 - [x] **On-demand playback polish** (2026-08-10, after real-conditions
       testing): unlike button restored in the Library list (heart, left of
       the play button), now behind a confirmation dialog since a liked
@@ -218,17 +219,22 @@ field (track title, artist, show names) before it reaches the UI.
 
 ## Network resilience
 
-Since this is a live audio stream primarily used on mobile (often on the
-move / roaming), the player handles connectivity issues explicitly rather
-than failing silently:
+The player handles connectivity issues explicitly for **both** the live
+stream and on-demand liked-track playback (same banners, same retry
+policy), rather than failing silently — important on mobile / roaming:
 
-- On a stream error or stall, it automatically reconnects with an
-  exponential backoff (up to 5 attempts).
+- On an audio error or stall (~10s), it automatically reconnects with an
+  exponential backoff (up to 5 attempts). Live reconnects to a fresh
+  Icecast edge (`/stream.mp3?_=…`); on-demand reloads the same file URL
+  and resumes near the last known position.
 - It listens to the browser's `online`/`offline` events: while genuinely
-  offline it stops burning retries and shows a clear banner, then reconnects
-  immediately once the network is back.
-- After exhausting retries with the network actually available, it shows a
-  "Retry" banner instead of spinning forever.
+  offline it stops burning retries and shows a clear grey banner, then
+  resumes immediately once the network is back (live → live edge;
+  playlist → same track).
+- After exhausting retries with the network actually available, it shows
+  a red "Retry" banner instead of spinning forever — in both modes.
+- Exception: the short end-of-queue transition jingle still fails safe
+  straight back to live (it's a bridge, not a library track).
 
 See `src/features/player/BottomPlayer.tsx` and `ConnectionBanner.tsx`.
 

@@ -38,7 +38,8 @@ interface PlayerState {
   // Mirrors navigator.onLine / window online/offline events.
   isOffline: boolean
   // True once auto-reconnect attempts have been exhausted after a stream
-  // failure — surfaced as a "Retry" banner instead of an endless spinner.
+  // or on-demand playback failure — surfaced as a "Retry" banner instead
+  // of an endless spinner. Same flag for live and playlist modes.
   streamError: boolean
   volume: number
   isExpanded: boolean

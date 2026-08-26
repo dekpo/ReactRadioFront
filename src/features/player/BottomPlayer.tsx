@@ -17,9 +17,11 @@ const SWIPE_EXPAND_VELOCITY = 400
 const FALLBACK_ARTWORK = '/carousel/yologaza-1.jpeg'
 
 // Auto-reconnect tuning for flaky mobile connections (roaming, tunnels...).
-// Live-stream only — on-demand playback (own backend, plain HTTP file
-// streaming) doesn't need this: a failed/interrupted request there just
-// falls back to live rather than retrying (see handleError below).
+// Shared by live and on-demand: same stall timeout, backoff, offline
+// banner, and red "Retry" banner. Live reconnects with a cache-busted
+// Icecast URL; on-demand reloads the same file URL and resumes position.
+// The end-of-queue transition jingle still fails safe to live (it's a
+// bridge back to the stream, not a library track).
 const MAX_RECONNECT_ATTEMPTS = 5
 const BASE_RECONNECT_DELAY_MS = 2000
 const MAX_RECONNECT_DELAY_MS = 16000
@@ -32,6 +34,9 @@ export function BottomPlayer() {
   const retryCountRef = useRef(0)
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stalledTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Last known on-demand position, snapshotted from `timeupdate` so a
+  // reconnect can resume instead of restarting the track at 0.
+  const ondemandResumeAtRef = useRef(0)
 
   const {
     mode,
@@ -62,6 +67,13 @@ export function BottomPlayer() {
     stalledTimeoutRef.current = null
   }
 
+  function getOndemandSrc(): string | null {
+    const store = usePlayerStore.getState()
+    if (store.isPlayingTransitionJingle) return randomJingleAudioUrl()
+    if (store.currentOndemandTrack) return likeAudioUrl(store.currentOndemandTrack.fileId)
+    return null
+  }
+
   // Connects (or reconnects) to the live edge of the stream. A plain
   // `audio.play()` after a pause would resume from whatever was already
   // buffered, not the actual live position — the underlying connection/
@@ -76,17 +88,55 @@ export function BottomPlayer() {
     audio.play().catch(scheduleReconnect)
   }
 
-  // Called on stream `error`, on a stalled `waiting` that lasted too long,
-  // or on a failed `play()` — decides whether to retry, wait for the network
-  // to come back, or give up and let the user retry manually. Live-only.
+  // Reloads the current liked track (or transition jingle) without
+  // cache-busting, then seeks back to where playback stalled.
+  function reconnectOndemand() {
+    const audio = audioRef.current
+    if (!audio) return
+    const src = getOndemandSrc()
+    if (!src) return
+    const resumeAt = ondemandResumeAtRef.current
+    usePlayerStore.getState().setBuffering(true)
+    audio.src = src
+    audio.load()
+    const onMeta = () => {
+      if (resumeAt > 0.5 && Number.isFinite(audio.duration) && resumeAt < audio.duration) {
+        audio.currentTime = resumeAt
+      }
+    }
+    audio.addEventListener('loadedmetadata', onMeta, { once: true })
+    audio.play().catch(scheduleReconnect)
+  }
+
+  function reconnectCurrent() {
+    if (usePlayerStore.getState().mode === 'live') connectAndPlay()
+    else reconnectOndemand()
+  }
+
+  // Called on `error`, on a stalled `waiting` that lasted too long, or on
+  // a failed `play()` — decides whether to retry, wait for the network to
+  // come back, or give up and let the user retry manually. Same policy for
+  // live and on-demand, except the end-of-queue jingle still falls back to
+  // live (it's a transition, not a library track).
   function scheduleReconnect() {
     const store = usePlayerStore.getState()
-    if (store.mode !== 'live' || !store.isPlaying) return // not live, or user intentionally stopped
-    clearReconnectTimers()
+    if (!store.isPlaying) return
+    if (store.mode === 'ondemand' && store.isPlayingTransitionJingle) {
+      clearReconnectTimers()
+      store.setBuffering(false)
+      store.returnToLive()
+      return
+    }
+    // A stall timeout and a native `error` often fire together; don't
+    // stack retry attempts if one is already scheduled.
+    if (retryTimeoutRef.current) return
+
+    if (stalledTimeoutRef.current) {
+      clearTimeout(stalledTimeoutRef.current)
+      stalledTimeoutRef.current = null
+    }
 
     if (store.isOffline) {
-      // No point burning retries while genuinely offline; the `online`
-      // listener below reconnects immediately once the network is back.
       store.setBuffering(false)
       return
     }
@@ -105,11 +155,11 @@ export function BottomPlayer() {
     )
     retryCountRef.current += 1
     store.setBuffering(true)
-    retryTimeoutRef.current = setTimeout(connectAndPlay, delay)
+    retryTimeoutRef.current = setTimeout(reconnectCurrent, delay)
   }
 
   // Live playback: connect/reconnect/disconnect. No-op while in on-demand
-  // mode (the effect below owns the <audio> element in that case).
+  // mode (the effects below own the <audio> element in that case).
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || mode !== 'live') return
@@ -129,8 +179,9 @@ export function BottomPlayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying, mode])
 
-  // Leaving live mode: never let a stray reconnect timer fire while we're
-  // now playing an on-demand track.
+  // Leaving live mode: drop any live reconnect timer so it can't fire
+  // against an on-demand src. On-demand reconnects are scheduled after
+  // this, from the track-load effect / error handlers.
   useEffect(() => {
     if (mode !== 'live') clearReconnectTimers()
   }, [mode])
@@ -140,34 +191,46 @@ export function BottomPlayer() {
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || mode !== 'ondemand') return
-    const src = isPlayingTransitionJingle
-      ? randomJingleAudioUrl()
-      : currentOndemandTrack
-        ? likeAudioUrl(currentOndemandTrack.fileId)
-        : null
+    const src = getOndemandSrc()
     if (!src) return
 
+    retryCountRef.current = 0
+    ondemandResumeAtRef.current = 0
+    usePlayerStore.getState().setStreamError(false)
     usePlayerStore.getState().setBuffering(true)
     audio.src = src
     audio.load()
     audio.play().catch(() => {
-      // Missing/broken file (e.g. no jingle in the database) — fail safe by
-      // returning to live rather than getting stuck.
-      usePlayerStore.getState().setBuffering(false)
-      usePlayerStore.getState().returnToLive()
+      if (usePlayerStore.getState().isPlayingTransitionJingle) {
+        usePlayerStore.getState().setBuffering(false)
+        usePlayerStore.getState().returnToLive()
+        return
+      }
+      scheduleReconnect()
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, currentOndemandTrack?.fileId, isPlayingTransitionJingle])
 
   // On-demand playback: pause/resume without reloading the current track.
+  // After a hard media error, `play()` on the dead element isn't enough —
+  // reload the file (same path as auto-reconnect / the live Retry button).
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || mode !== 'ondemand') return
     if (isPlaying) {
-      audio.play().catch(() => {})
+      retryCountRef.current = 0
+      usePlayerStore.getState().setStreamError(false)
+      if (audio.error) {
+        reconnectOndemand()
+      } else {
+        audio.play().catch(scheduleReconnect)
+      }
     } else {
+      clearReconnectTimers()
       audio.pause()
+      usePlayerStore.getState().setBuffering(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying, mode])
 
   useEffect(() => {
@@ -188,21 +251,17 @@ export function BottomPlayer() {
     }
     // `waiting` fires if playback stalls (network hiccup). Give it
     // STALLED_TIMEOUT_MS to resolve on its own before forcing a reconnect —
-    // live-stream only, on-demand playback just keeps buffering.
+    // same policy for live and on-demand (except the transition jingle,
+    // which scheduleReconnect already fails safe to live).
     const handleWaiting = () => {
       usePlayerStore.getState().setBuffering(true)
-      if (usePlayerStore.getState().mode !== 'live') return
       if (stalledTimeoutRef.current) clearTimeout(stalledTimeoutRef.current)
       stalledTimeoutRef.current = setTimeout(scheduleReconnect, STALLED_TIMEOUT_MS)
     }
     const handleError = () => {
-      const store = usePlayerStore.getState()
-      if (store.mode === 'live') {
-        scheduleReconnect()
-      } else {
-        // Broken/missing on-demand file: fail safe by returning to live.
-        store.returnToLive()
-      }
+      // Live and on-demand share scheduleReconnect (retry / offline wait /
+      // red banner). Jingle → live is handled inside scheduleReconnect.
+      scheduleReconnect()
     }
     // Only clear the buffering flag here for an *intentional* stop — the
     // reconnect logic above never calls audio.pause() directly.
@@ -223,17 +282,22 @@ export function BottomPlayer() {
         // Replay the same track directly (not via ondemandNext, which is
         // also used for manual "skip" and should always move forward).
         audio.currentTime = 0
-        audio.play().catch(() => {})
+        ondemandResumeAtRef.current = 0
+        audio.play().catch(scheduleReconnect)
         return
       }
       store.ondemandNext()
     }
     // Seek bar support (on-demand only — a live stream's position/duration
     // aren't meaningful). `duration` can briefly be `Infinity`/`NaN` right
-    // after `src` changes, before metadata has loaded.
+    // after `src` changes, before metadata has loaded. Also snapshot
+    // position for reconnect-resume.
     const handleTimeUpdate = () => {
       const store = usePlayerStore.getState()
       if (store.mode !== 'ondemand') return
+      if (Number.isFinite(audio.currentTime) && audio.currentTime > 0) {
+        ondemandResumeAtRef.current = audio.currentTime
+      }
       store.setPlaybackProgress(
         audio.currentTime,
         Number.isFinite(audio.duration) ? audio.duration : 0,
@@ -266,6 +330,7 @@ export function BottomPlayer() {
     const audio = audioRef.current
     if (!audio || seekTo === null) return
     audio.currentTime = seekTo
+    ondemandResumeAtRef.current = seekTo
     usePlayerStore.getState().clearSeekRequest()
   }, [seekTo])
 
@@ -276,13 +341,15 @@ export function BottomPlayer() {
     function handleOnline() {
       usePlayerStore.getState().setOffline(false)
       // Jump straight back to a fresh connection attempt instead of waiting
-      // for a stale retry timer — the whole point of roaming resilience.
-      // Live-only: on-demand playback doesn't retry on network hiccups.
+      // for a stale retry timer — same for live and on-demand.
       const store = usePlayerStore.getState()
-      if (store.mode === 'live' && store.isPlaying) {
-        retryCountRef.current = 0
-        connectAndPlay()
+      if (!store.isPlaying) return
+      if (store.mode === 'ondemand' && store.isPlayingTransitionJingle) {
+        // Don't fight the jingle fail-safe; let ended/error send us to live.
+        return
       }
+      retryCountRef.current = 0
+      reconnectCurrent()
     }
     function handleOffline() {
       usePlayerStore.getState().setOffline(true)
