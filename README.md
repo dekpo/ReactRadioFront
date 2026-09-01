@@ -9,6 +9,8 @@ read-only mode — no custom backend required for the current phase.
 **Live in production at https://radio.yologaza.com/** (static build served by
 the existing nginx, see [Deployment](#deployment) below).
 
+Companion API: [ReactRadioBack](https://github.com/dekpo/ReactRadioBack).
+
 ## Status
 
 - [x] Project bootstrap (Vite + React 19 + TypeScript, Tailwind CSS v4)
