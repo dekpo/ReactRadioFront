@@ -4,6 +4,7 @@ import { Loader2, Pause, Play, SkipBack, SkipForward, Volume2, Radio } from 'luc
 import { STREAM_URL } from '../../lib/api'
 import { likeAudioUrl, randomJingleAudioUrl } from '../../lib/backendApi'
 import { LikeButton } from '../likes/LikeButton'
+import { toLikeTrackInfo } from '../likes/likesStore'
 import { usePlayerStore } from './playerStore'
 import { useLiveInfo } from './useLiveInfo'
 
@@ -471,7 +472,7 @@ export function BottomPlayer() {
       dragConstraints={{ top: 0, bottom: 0 }}
       dragElastic={{ top: 0.5, bottom: 0 }}
       onDragEnd={handleDragEnd}
-      className="relative flex items-center justify-between gap-4 border-t border-red-900/40 bg-gradient-to-r from-red-950 via-neutral-950 to-neutral-950 px-4 py-3"
+      className="relative flex items-center justify-between gap-3 border-t border-red-900/40 bg-gradient-to-r from-red-950 via-neutral-950 to-neutral-950 px-4 py-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-4"
     >
       {/* Thin accent line: the main visual cue (per design decision) that
           this bar isn't just a static footer — it echoes the red gradient
@@ -503,30 +504,45 @@ export function BottomPlayer() {
 
       <audio ref={audioRef} preload="none" />
 
-      {/* Track info: left-aligned, on its own (the heart now lives next to
-          the play button on the right — see below). */}
-      <button
-        type="button"
-        onClick={expand}
-        aria-label="Open now playing"
-        className="flex min-w-0 flex-1 items-center gap-3 text-left sm:flex-none"
-      >
-        {artwork ? (
-          <img
-            src={artwork}
-            alt=""
-            className="h-12 w-12 flex-shrink-0 rounded object-cover"
+      {/* Left column: artwork + title/artist + heart (Spotify-style).
+          flex-1 on mobile keeps play on the right; on sm+ the 1fr column
+          absorbs title length so the center controls stay put. */}
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <button
+          type="button"
+          onClick={expand}
+          aria-label="Open now playing"
+          className="flex min-w-0 items-center gap-3 text-left"
+        >
+          {artwork ? (
+            <img
+              src={artwork}
+              alt=""
+              className="h-12 w-12 flex-shrink-0 rounded object-cover"
+            />
+          ) : (
+            <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-800" />
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{title}</p>
+            <p className="truncate text-xs text-neutral-400">{artist}</p>
+          </div>
+        </button>
+        {!isPlayingTransitionJingle && (
+          <LikeButton
+            track={!isOndemand ? liveTrack : undefined}
+            libraryTrack={
+              isOndemand && currentOndemandTrack
+                ? toLikeTrackInfo(currentOndemandTrack)
+                : undefined
+            }
+            size={18}
+            className="flex-shrink-0"
           />
-        ) : (
-          <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-800" />
         )}
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{title}</p>
-          <p className="truncate text-xs text-neutral-400">{artist}</p>
-        </div>
-      </button>
+      </div>
 
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex flex-shrink-0 items-center gap-2 sm:gap-4">
         {isOndemand && !isPlayingTransitionJingle && (
           <button
             type="button"
@@ -537,10 +553,6 @@ export function BottomPlayer() {
             <SkipBack size={18} />
           </button>
         )}
-
-        {/* Heart sits immediately to the left of play/pause, on the right
-            side of the bar — not next to the track title. */}
-        {!isOndemand && <LikeButton track={liveTrack} size={18} className="flex-shrink-0" />}
 
         <button
           type="button"
@@ -570,31 +582,35 @@ export function BottomPlayer() {
         )}
       </div>
 
-      {isOndemand ? (
-        <button
-          type="button"
-          onClick={returnToLive}
-          className="hidden flex-shrink-0 items-center gap-1.5 rounded-full border border-red-500/50 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-500/10 md:flex"
-        >
-          <Radio size={14} /> Revenir au direct
-        </button>
-      ) : (
-        <div className="hidden items-center gap-2 md:flex">
-          <span className="flex items-center gap-1 text-xs font-semibold text-red-500">
-            <span className="h-2 w-2 rounded-full bg-red-500" /> LIVE
-          </span>
-          <Volume2 size={18} className="ml-4 text-neutral-400" />
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-            className="w-24 accent-white"
-          />
-        </div>
-      )}
+      {/* Empty 1fr column from sm so prev/play/next stay centered before
+          the md-only "Revenir au direct" / LIVE+volume controls appear. */}
+      <div className="hidden min-w-0 sm:flex sm:justify-end">
+        {isOndemand ? (
+          <button
+            type="button"
+            onClick={returnToLive}
+            className="hidden flex-shrink-0 items-center gap-1.5 rounded-full border border-red-500/50 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-500/10 md:flex"
+          >
+            <Radio size={14} /> Revenir au direct
+          </button>
+        ) : (
+          <div className="hidden items-center gap-2 md:flex">
+            <span className="flex items-center gap-1 text-xs font-semibold text-red-500">
+              <span className="h-2 w-2 rounded-full bg-red-500" /> LIVE
+            </span>
+            <Volume2 size={18} className="ml-4 text-neutral-400" />
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={volume}
+              onChange={(e) => setVolume(Number(e.target.value))}
+              className="w-24 accent-white"
+            />
+          </div>
+        )}
+      </div>
     </motion.div>
   )
 }

@@ -9,12 +9,21 @@ export interface LikeTrackInfo {
   artwork_url?: string
 }
 
-function toOndemandTrack(like: Like): OndemandTrack {
+export function toOndemandTrack(like: Like): OndemandTrack {
   return {
     fileId: like.file_id,
     title: like.track_title ?? 'Titre inconnu',
     artist: like.artist_name ?? 'Artiste inconnu',
     artworkUrl: like.artwork_url,
+  }
+}
+
+export function toLikeTrackInfo(track: OndemandTrack): LikeTrackInfo {
+  return {
+    file_id: track.fileId,
+    track_title: track.title,
+    artist_name: track.artist,
+    artwork_url: track.artworkUrl ?? undefined,
   }
 }
 
@@ -87,5 +96,3 @@ export const useLikesStore = create<LikesState>((set, get) => ({
   },
   reset: () => set({ likes: [], hasLoaded: false }),
 }))
-
-export { toOndemandTrack }
