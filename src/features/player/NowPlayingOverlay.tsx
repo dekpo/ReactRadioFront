@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { ConnectionBanner } from './ConnectionBanner'
 import { LikeButton } from '../likes/LikeButton'
+import { toLikeTrackInfo } from '../likes/likesStore'
 import { useLiveInfo } from './useLiveInfo'
 import { usePlayerStore } from './playerStore'
 import { formatDuration } from './formatDuration'
@@ -134,20 +135,28 @@ export function NowPlayingOverlay() {
                 )}
               </div>
 
-              {/* Spotify-style layout: title/artist left-aligned, heart
-                  pinned to the right on the same row — rather than
-                  everything centered, which reads as less polished and
-                  leaves the like button oddly floating next to the text. */}
-              <div className="mt-4 flex items-center justify-between gap-4 sm:mt-6">
-                <div className="min-w-0">
-                  <p className="truncate text-xl font-bold sm:text-2xl">{title}</p>
-                  <p className="mt-1 truncate text-sm text-neutral-300">{artist}</p>
+              {/* Spotify-style: heart immediately to the right of the
+                  title (same row), artist underneath. Shown in live and
+                  on-demand — unliking is confirmed inside LikeButton. */}
+              <div className="mt-4 min-w-0 sm:mt-6">
+                <div className="flex items-center gap-3">
+                  <p className="min-w-0 truncate text-xl font-bold sm:text-2xl">
+                    {title}
+                  </p>
+                  {!isPlayingTransitionJingle && (
+                    <LikeButton
+                      track={!isOndemand ? liveTrack : undefined}
+                      libraryTrack={
+                        isOndemand && currentOndemandTrack
+                          ? toLikeTrackInfo(currentOndemandTrack)
+                          : undefined
+                      }
+                      size={24}
+                      className="flex-shrink-0"
+                    />
+                  )}
                 </div>
-                {/* No like button while playing on-demand: the track is
-                    already necessarily in the user's library. */}
-                {!isOndemand && (
-                  <LikeButton track={liveTrack} size={24} className="flex-shrink-0" />
-                )}
+                <p className="mt-1 truncate text-sm text-neutral-300">{artist}</p>
               </div>
 
               {/* Seek bar: on-demand only — a live stream has no meaningful

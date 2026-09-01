@@ -17,9 +17,10 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Heart, Library, Pause, Play } from 'lucide-react'
+import { GripVertical, Library, Pause, Play } from 'lucide-react'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { useAuthStore } from '../auth/authStore'
+import { LikeButton } from '../likes/LikeButton'
 import { toOndemandTrack, useLikesStore } from '../likes/likesStore'
 import { usePlayerStore } from '../player/playerStore'
 import type { Like } from '../../lib/backendApi'
@@ -29,7 +30,6 @@ interface SortableLikeRowProps {
   index: number
   isCurrent: boolean
   isPlaying: boolean
-  onUnlike: (like: Like) => void
   onPlayToggle: (like: Like, index: number, isCurrent: boolean) => void
 }
 
@@ -38,7 +38,6 @@ function SortableLikeRow({
   index,
   isCurrent,
   isPlaying,
-  onUnlike,
   onPlayToggle,
 }: SortableLikeRowProps) {
   const {
@@ -88,26 +87,33 @@ function SortableLikeRow({
       ) : (
         <div className="h-12 w-12 flex-shrink-0 rounded bg-neutral-700" />
       )}
-      <div className="min-w-0 flex-1">
-        <p
-          className={`truncate text-sm font-medium ${isCurrent ? 'text-red-400' : ''}`}
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="min-w-0">
+          <p
+            className={`truncate text-sm font-medium ${isCurrent ? 'text-red-400' : ''}`}
+          >
+            {like.track_title ?? 'Titre inconnu'}
+          </p>
+          <p className="truncate text-xs text-neutral-400">
+            {like.artist_name ?? 'Artiste inconnu'}
+          </p>
+        </div>
+        <div
+          className="flex-shrink-0 cursor-pointer"
+          onPointerDown={stopRowDrag}
+          onTouchStart={stopRowDrag}
         >
-          {like.track_title ?? 'Titre inconnu'}
-        </p>
-        <p className="truncate text-xs text-neutral-400">
-          {like.artist_name ?? 'Artiste inconnu'}
-        </p>
+          <LikeButton
+            libraryTrack={{
+              file_id: like.file_id,
+              track_title: like.track_title ?? undefined,
+              artist_name: like.artist_name ?? undefined,
+              artwork_url: like.artwork_url ?? undefined,
+            }}
+            size={18}
+          />
+        </div>
       </div>
-      <button
-        type="button"
-        onPointerDown={stopRowDrag}
-        onTouchStart={stopRowDrag}
-        onClick={() => onUnlike(like)}
-        aria-label="Retirer des favoris"
-        className="flex-shrink-0 cursor-pointer text-red-500 transition hover:text-red-400"
-      >
-        <Heart size={18} fill="currentColor" />
-      </button>
       <button
         type="button"
         onPointerDown={stopRowDrag}
@@ -125,13 +131,9 @@ function SortableLikeRow({
 export function LibraryPage() {
   const { user, isBootstrapping, openConsentModal, logout, deleteAccount } =
     useAuthStore()
-  const { likes, isLoading, hasLoaded, fetchLikes, toggleLike, reorderLikes } =
+  const { likes, isLoading, hasLoaded, fetchLikes, reorderLikes } =
     useLikesStore()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  // Track pending unlike, to confirm before removing a track from the
-  // library — liked tracks are only ever (re)discoverable by listening to
-  // the live stream again, so an accidental unlike would be costly.
-  const [unlikeTarget, setUnlikeTarget] = useState<Like | null>(null)
   const { mode, currentOndemandTrack, isPlaying, playOndemand, togglePlay } =
     usePlayerStore()
 
@@ -234,7 +236,6 @@ export function LibraryPage() {
                       index={index}
                       isCurrent={isCurrent}
                       isPlaying={isPlaying}
-                      onUnlike={setUnlikeTarget}
                       onPlayToggle={(_like, rowIndex, rowIsCurrent) =>
                         rowIsCurrent
                           ? togglePlay()
@@ -259,19 +260,6 @@ export function LibraryPage() {
             deleteAccount()
           }}
           onCancel={() => setIsDeleteDialogOpen(false)}
-        />
-
-        <ConfirmDialog
-          open={unlikeTarget !== null}
-          title="Retirer ce morceau de tes favoris ?"
-          description={`« ${unlikeTarget?.track_title ?? 'Ce morceau'} » sera retiré de ta bibliothèque. Tu ne pourras le retrouver qu'en le likant à nouveau depuis le direct.`}
-          confirmLabel="Retirer"
-          destructive
-          onConfirm={() => {
-            if (unlikeTarget) toggleLike({ file_id: unlikeTarget.file_id })
-            setUnlikeTarget(null)
-          }}
-          onCancel={() => setUnlikeTarget(null)}
         />
       </div>
     )
