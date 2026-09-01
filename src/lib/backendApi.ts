@@ -61,6 +61,14 @@ export const backendApi = {
       method: 'POST',
       body: JSON.stringify({ code }),
     }),
+  appleLogin: (idToken: string, displayName?: string | null) =>
+    request<BackendUser>('/auth/apple/callback', {
+      method: 'POST',
+      body: JSON.stringify({
+        id_token: idToken,
+        display_name: displayName ?? null,
+      }),
+    }),
   logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
   me: () => request<BackendUser>('/me'),
   deleteAccount: () => request<{ ok: true }>('/me', { method: 'DELETE' }),

@@ -2,13 +2,20 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useGoogleLogin } from '@react-oauth/google'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
+import { FaApple } from 'react-icons/fa'
 import { FcGoogle } from 'react-icons/fc'
 import { useAuthStore } from './authStore'
+import { signInWithApple } from './appleSignIn'
 import { usePlayerStore } from '../player/playerStore'
 
 export function ConsentModal() {
-  const { isConsentModalOpen, pendingLikeIntent, closeConsentModal, loginWithGoogleCode } =
-    useAuthStore()
+  const {
+    isConsentModalOpen,
+    pendingLikeIntent,
+    closeConsentModal,
+    loginWithGoogleCode,
+    loginWithApple,
+  } = useAuthStore()
   const collapsePlayer = usePlayerStore((state) => state.collapse)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -32,10 +39,10 @@ export function ConsentModal() {
 
   // Successful login: if it was triggered by tapping the heart while
   // signed out (pendingLikeIntent set), the user's actual goal was to like
-  // that track and keep looking at it — `loginWithGoogleCode` already
-  // performed the like, so just close the modal and leave the fullscreen
-  // overlay open. Otherwise (generic "sign in" entry point), behave like
-  // any other navigation and close the overlay too.
+  // that track and keep looking at it — login already performed the like,
+  // so just close the modal and leave the fullscreen overlay open.
+  // Otherwise (generic "sign in" entry point), behave like any other
+  // navigation and close the overlay too.
   const handleLoginSuccess = () => {
     setError(null)
     if (pendingLikeIntent) {
@@ -53,7 +60,7 @@ export function ConsentModal() {
   // ever shows Google's native popup window, never an embedded widget, so
   // our own button fully controls the look. The resulting `code` is
   // exchanged for an ID token server-side (see backend/app/auth.py).
-  const login = useGoogleLogin({
+  const loginGoogle = useGoogleLogin({
     flow: 'auth-code',
     onSuccess: async (codeResponse) => {
       setIsSubmitting(true)
@@ -68,6 +75,20 @@ export function ConsentModal() {
     },
     onError: () => setError('Connexion Google annulée ou invalide.'),
   })
+
+  const handleAppleLogin = async () => {
+    setIsSubmitting(true)
+    setError(null)
+    try {
+      const { idToken, displayName } = await signInWithApple()
+      await loginWithApple(idToken, displayName)
+      handleLoginSuccess()
+    } catch {
+      setError('Connexion Apple annulée ou invalide.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -89,10 +110,10 @@ export function ConsentModal() {
           >
             <h2 className="text-lg font-semibold">Avant de continuer</h2>
             <p className="mt-3 text-sm text-neutral-300">
-              En te connectant avec Google, Radio Yologaza utilisera ton
-              email et ton nom pour créer ton compte, et conservera les
-              morceaux que tu likes pour te proposer ta playlist
-              personnelle.
+              En te connectant avec Google ou Apple, Radio Yologaza
+              utilisera ton email et ton nom pour créer ton compte, et
+              conservera les morceaux que tu likes pour te proposer ta
+              playlist personnelle.
             </p>
             <p className="mt-3 text-sm text-neutral-400">
               Tu peux supprimer ton compte et tes données à tout moment
@@ -110,12 +131,21 @@ export function ConsentModal() {
             <div className="mt-6 flex flex-col items-center gap-2">
               <button
                 type="button"
-                onClick={() => login()}
+                onClick={() => loginGoogle()}
                 disabled={isSubmitting}
-                className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-neutral-200 disabled:opacity-50"
+                className="flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-neutral-200 disabled:opacity-50"
               >
                 <FcGoogle size={18} />
                 {isSubmitting ? 'Connexion…' : 'Continuer avec Google'}
+              </button>
+              <button
+                type="button"
+                onClick={handleAppleLogin}
+                disabled={isSubmitting}
+                className="flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-neutral-200 disabled:opacity-50"
+              >
+                <FaApple size={18} />
+                {isSubmitting ? 'Connexion…' : 'Continuer avec Apple'}
               </button>
               {error && <p className="text-xs text-red-400">{error}</p>}
               <button

@@ -10,9 +10,11 @@ export function PrivacyPolicyPage() {
           Quelles données sont collectées ?
         </h2>
         <p>
-          Quand tu te connectes avec Google, nous récupérons ton email, ton
-          nom et ta photo de profil auprès de Google. Nous ne recevons
-          jamais ton mot de passe. Quand tu likes un morceau, nous
+          Quand tu te connectes avec Google ou Apple, nous récupérons ton
+          email et ton nom auprès du fournisseur choisi. Avec Google, nous
+          pouvons aussi recevoir ta photo de profil. Nous ne recevons
+          jamais ton mot de passe. Apple peut te proposer une adresse email
+          masquée (Private Relay). Quand tu likes un morceau, nous
           conservons son identifiant et son titre pour constituer ta
           playlist personnelle.
         </p>

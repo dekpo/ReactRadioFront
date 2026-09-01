@@ -18,7 +18,6 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Heart, Library, Pause, Play } from 'lucide-react'
-import { FcGoogle } from 'react-icons/fc'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { useAuthStore } from '../auth/authStore'
 import { toOndemandTrack, useLikesStore } from '../likes/likesStore'
@@ -291,8 +290,7 @@ export function LibraryPage() {
         onClick={() => openConsentModal()}
         className="flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition hover:bg-neutral-200"
       >
-        <FcGoogle size={18} />
-        Se connecter avec Google
+        Se connecter
       </button>
     </div>
   )

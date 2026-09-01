@@ -6,8 +6,8 @@ interface AuthState {
   user: BackendUser | null
   // True while checking for an existing session on app load.
   isBootstrapping: boolean
-  // Controls the consent modal shown before starting the Google sign-in
-  // flow (GDPR: explicit, tracked consent to data processing — see
+  // Controls the consent modal shown before starting sign-in (GDPR:
+  // explicit, tracked consent to data processing — see
   // AI-Context/handoff-phase2-accounts-likes for the rationale).
   isConsentModalOpen: boolean
   // Set when the consent modal was opened from the heart button on a track
@@ -23,6 +23,9 @@ interface AuthState {
   // `code`: OAuth 2.0 authorization code from the frontend's custom Google
   // button (auth-code popup flow) — exchanged for an ID token server-side.
   loginWithGoogleCode: (code: string) => Promise<void>
+  // Apple ID token from Apple JS SDK popup; optional displayName only on
+  // the user's first Apple authorization.
+  loginWithApple: (idToken: string, displayName?: string | null) => Promise<void>
   logout: () => Promise<void>
   deleteAccount: () => Promise<void>
 }
@@ -48,20 +51,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loginWithGoogleCode: async (code) => {
     const user = await backendApi.googleLogin(code)
     set({ user })
-
-    const intent = get().pendingLikeIntent
-    if (intent) {
-      // A returning user might have already liked this track in a past
-      // session (browser cleared cookies, session expired, ...) — fetch
-      // their real likes first so we don't blindly re-POST a like that
-      // already exists (the backend enforces a unique constraint on
-      // user_id+file_id and would reject it).
-      const likesStore = useLikesStore.getState()
-      await likesStore.fetchLikes()
-      if (!useLikesStore.getState().isLiked(intent.file_id)) {
-        await useLikesStore.getState().toggleLike(intent)
-      }
-    }
+    await applyPendingLikeIntent(get)
+  },
+  loginWithApple: async (idToken, displayName) => {
+    const user = await backendApi.appleLogin(idToken, displayName)
+    set({ user })
+    await applyPendingLikeIntent(get)
   },
   logout: async () => {
     await backendApi.logout()
@@ -74,3 +69,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     useLikesStore.getState().reset()
   },
 }))
+
+async function applyPendingLikeIntent(get: () => AuthState) {
+  const intent = get().pendingLikeIntent
+  if (!intent) return
+
+  // A returning user might have already liked this track in a past
+  // session (browser cleared cookies, session expired, ...) — fetch
+  // their real likes first so we don't blindly re-POST a like that
+  // already exists (the backend enforces a unique constraint on
+  // user_id+file_id and would reject it).
+  const likesStore = useLikesStore.getState()
+  await likesStore.fetchLikes()
+  if (!useLikesStore.getState().isLiked(intent.file_id)) {
+    await useLikesStore.getState().toggleLike(intent)
+  }
+}
