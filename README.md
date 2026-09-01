@@ -76,12 +76,13 @@ Companion API: [ReactRadioBack](https://github.com/dekpo/ReactRadioBack).
       branch `feature/unify-audio-error-handling`) — the player stays on
       the playlist track and resumes it; only the transition jingle still
       fails safe straight to live.
-      **Known limitation, deferred**: no like/unlike button while playing
-      on-demand (the track is definitionally already liked).
+      The like heart is also shown while playing on-demand (2026-09-01);
+      unliking is always confirmed first.
 - [x] **On-demand playback polish** (2026-08-10, after real-conditions
-      testing): unlike button restored in the Library list (heart, left of
-      the play button), now behind a confirmation dialog since a liked
-      track can only be rediscovered by listening to the live stream again;
+      testing): unlike button restored in the Library list (heart), behind
+      a confirmation dialog since a liked track can only be rediscovered
+      by listening to the live stream again (placement later aligned
+      Spotify-style on 2026-09-01 — see below);
       seek bar with scrubbing for on-demand playback (full bar + time
       labels in the fullscreen overlay; a thinner, desktop-only draggable
       progress line in the collapsed bottom player — deliberately not
@@ -102,14 +103,13 @@ Companion API: [ReactRadioBack](https://github.com/dekpo/ReactRadioBack).
       transition jingle (that's reserved for the natural, non-repeating
       end of a listening session).
 - [x] **Further UI polish (2026-08-10, evening, requested explicitly by
-      the user per `.cursor/rules/design-change-approval.mdc`), built and
-      passing lint/build but not yet deployed**: heart moved again in
-      `BottomPlayer` (now right next to play/pause on the right side,
-      no longer next to the track title); `NowPlayingOverlay`'s vertical
-      spacing reduced on mobile (and its central column capped at
-      `min(22rem, 42vh)`) so "Revenir au direct" is reachable without
-      scrolling on short phone screens, which the on-demand seek bar had
-      pushed below the fold.
+      the user per `.cursor/rules/design-change-approval.mdc`)**:
+      `NowPlayingOverlay`'s vertical spacing reduced on mobile (and its
+      central column capped at `min(22rem, 42vh)`) so "Revenir au direct"
+      is reachable without scrolling on short phone screens, which the
+      on-demand seek bar had pushed below the fold. (A same-evening
+      placement of the heart next to play/pause was reversed on
+      2026-09-01 — see like-placement item below.)
 - [x] **Shuffle mode** (2026-08-10, evening, on branch
       `feature/shuffle-dragdrop`): Spotify-style toggle in the fullscreen
       overlay to the left of "previous" (on-demand only), independent of
@@ -125,6 +125,16 @@ Companion API: [ReactRadioBack](https://github.com/dekpo/ReactRadioBack).
       playback is active, `syncOndemandQueue` keeps the current track and
       rebuilds upcoming order (and reshuffles `playOrder` if shuffle is
       on). Deployed 2026-08-10 with backend `497058c`.
+- [x] **Like placement + centered player controls** (2026-09-01, branch
+      `fix/like-placement-and-player-centering`, deployed the same
+      evening as `index-CA33DpGA.js`, tested live by the user): Spotify-
+      style heart immediately to the right of the track title (library
+      list, bottom bar, and fullscreen overlay — live **and** on-demand).
+      Desktop prev/play/next stay visually centered regardless of title
+      length (three-column `1fr / auto / 1fr` grid from `sm:`); mobile
+      keeps play on the right. Unliking from any of those surfaces uses
+      the same confirmation dialog. Overlay heart sits on the title row,
+      not pinned to the far right of the artwork column.
 
 See `backend/README.md` in
 [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend) for the
@@ -188,8 +198,9 @@ src/
                              # delete account, liked tracks list
     auth/                   # authStore (Zustand), GDPR consent modal + Google
                              # Sign-In button
-    likes/                  # likesStore (Zustand), LikeButton (heart on the
-                             # currently playing track)
+    likes/                  # likesStore (Zustand), LikeButton (heart next
+                             # to the title in the player, overlay, and
+                             # library list; confirms before unlike)
     legal/                  # /confidentialite privacy policy page
     player/                 # Bottom player, fullscreen overlay, connection
                              # banner, Zustand store, live-info hook
