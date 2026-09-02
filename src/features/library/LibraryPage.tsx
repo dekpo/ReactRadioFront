@@ -89,11 +89,22 @@ function SortableLikeRow({
       )}
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <div className="min-w-0">
-          <p
-            className={`truncate text-sm font-medium ${isCurrent ? 'text-red-400' : ''}`}
+          <button
+            type="button"
+            onPointerDown={stopRowDrag}
+            onTouchStart={stopRowDrag}
+            onClick={() => onPlayToggle(like, index, isCurrent)}
+            aria-label={
+              isCurrent && isPlaying
+                ? `Mettre en pause ${like.track_title ?? 'ce morceau'}`
+                : `Lire ${like.track_title ?? 'ce morceau'}`
+            }
+            className={`block w-full cursor-pointer truncate text-left text-sm font-medium ${
+              isCurrent ? 'text-red-400' : ''
+            }`}
           >
             {like.track_title ?? 'Titre inconnu'}
-          </p>
+          </button>
           <p className="truncate text-xs text-neutral-400">
             {like.artist_name ?? 'Artiste inconnu'}
           </p>
@@ -204,7 +215,8 @@ export function LibraryPage() {
 
         <div>
           <h2 className="mb-3 text-sm font-semibold text-neutral-400">
-            Morceaux likés — écoute-les à la demande, en dehors du direct.
+            Morceaux likés ({likes.length}) — écoute-les à la demande, en
+            dehors du direct.
           </h2>
           {isLoading && likes.length === 0 && (
             <p className="text-sm text-neutral-500">Chargement…</p>

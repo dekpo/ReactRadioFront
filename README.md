@@ -135,6 +135,14 @@ Companion API: [ReactRadioBack](https://github.com/dekpo/ReactRadioBack).
       keeps play on the right. Unliking from any of those surfaces uses
       the same confirmation dialog. Overlay heart sits on the title row,
       not pinned to the far right of the artwork column.
+- [x] **Library + desktop player UX** (2026-09-02, branch
+      `feat/library-player-ux`, not yet deployed): shuffle and repeat
+      (same 3-state cycle as the overlay) in the desktop bottom bar
+      while on-demand — order `[shuffle] [prev] [play] [next] [repeat]`,
+      hidden on mobile. Library heading shows `Morceaux likés (N)`.
+      Clicking a liked-track title starts/pauses playback (same as the
+      row's play button). Title/artist already use CSS `truncate`; no
+      extra max-length was added (see 2026-09-02 journal).
 
 See `backend/README.md` in
 [`ReactRadioBackend`](https://github.com/dekpo/ReactRadioBackend) for the

@@ -1,6 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { motion, type PanInfo } from 'framer-motion'
-import { Loader2, Pause, Play, SkipBack, SkipForward, Volume2, Radio } from 'lucide-react'
+import {
+  Loader2,
+  Pause,
+  Play,
+  Radio,
+  Repeat,
+  Repeat1,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Volume2,
+} from 'lucide-react'
 import { STREAM_URL } from '../../lib/api'
 import { likeAudioUrl, randomJingleAudioUrl } from '../../lib/backendApi'
 import { LikeButton } from '../likes/LikeButton'
@@ -56,6 +67,10 @@ export function BottomPlayer() {
     duration,
     seekTo,
     requestSeek,
+    isShuffled,
+    toggleShuffle,
+    repeatMode,
+    cycleRepeatMode,
   } = usePlayerStore()
 
   const { data } = useLiveInfo()
@@ -546,6 +561,23 @@ export function BottomPlayer() {
         {isOndemand && !isPlayingTransitionJingle && (
           <button
             type="button"
+            onClick={toggleShuffle}
+            aria-label={
+              isShuffled
+                ? 'Désactiver la lecture aléatoire'
+                : 'Activer la lecture aléatoire'
+            }
+            className={`hidden transition hover:text-white sm:block ${
+              isShuffled ? 'text-red-500' : 'text-neutral-300'
+            }`}
+          >
+            <Shuffle size={18} />
+          </button>
+        )}
+
+        {isOndemand && !isPlayingTransitionJingle && (
+          <button
+            type="button"
             onClick={ondemandPrevious}
             aria-label="Morceau précédent"
             className="hidden text-neutral-300 transition hover:text-white sm:block"
@@ -580,10 +612,30 @@ export function BottomPlayer() {
             <SkipForward size={18} />
           </button>
         )}
+
+        {isOndemand && !isPlayingTransitionJingle && (
+          <button
+            type="button"
+            onClick={cycleRepeatMode}
+            aria-label={
+              repeatMode === 'off'
+                ? 'Activer la répétition de la playlist'
+                : repeatMode === 'queue'
+                  ? 'Activer la répétition du morceau'
+                  : 'Désactiver la répétition'
+            }
+            className={`hidden transition hover:text-white sm:block ${
+              repeatMode === 'off' ? 'text-neutral-300' : 'text-red-500'
+            }`}
+          >
+            {repeatMode === 'track' ? <Repeat1 size={18} /> : <Repeat size={18} />}
+          </button>
+        )}
       </div>
 
-      {/* Empty 1fr column from sm so prev/play/next stay centered before
-          the md-only "Revenir au direct" / LIVE+volume controls appear. */}
+      {/* Empty 1fr column from sm so shuffle/prev/play/next/repeat stay
+          centered before the md-only "Revenir au direct" / LIVE+volume
+          controls appear. */}
       <div className="hidden min-w-0 sm:flex sm:justify-end">
         {isOndemand ? (
           <button
